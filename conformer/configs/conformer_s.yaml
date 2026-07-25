@@ -1,0 +1,59 @@
+# Conformer (S) -- paper Table 1: 10.3M params, 16 layers, dim 144, 4 heads, kernel 32.
+# Reported WER (Table 2): 2.7 test-clean / 6.3 test-other without an external LM.
+
+model:
+  name: conformer_s
+  head: ctc                  # ctc | transducer  (the paper uses transducer)
+  input_dim: 80
+  encoder_dim: 144
+  num_layers: 16
+  num_heads: 4
+  ffn_expansion: 4
+  conv_expansion: 2
+  conv_kernel_size: 32
+  dropout: 0.1               # paper §3.2: P_drop = 0.1 in every residual unit
+  half_step_residual: true
+  # Transducer decoder (paper Table 1: 1 LSTM layer, decoder dim 320).
+  decoder_dim: 320
+  decoder_layers: 1
+  joint_dim: 320
+
+data:
+  root: ../data/LibriSpeech
+  train_sets: [train-clean-100, train-clean-360, train-other-500]   # the paper's 970h
+  dev_sets: [dev-clean]
+  test_sets: [test-clean, test-other]
+  sample_rate: 16000
+  # paper §3.1: 80-channel filterbanks, 25ms window, 10ms stride
+  num_mel_bins: 80
+  frame_length: 25.0
+  frame_shift: 10.0
+  max_duration: 17.0         # drop the handful of very long utterances
+  tokenizer: exp/spm_1k.model
+  vocab_size: 1024           # paper §3.2: 1k WPM built from LibriSpeech 960h
+
+specaug:
+  # paper §3.1: mask parameter F=27, ten time masks, max time-mask ratio pS=0.05
+  enabled: true
+  num_freq_masks: 2
+  freq_mask_param: 27
+  num_time_masks: 10
+  time_mask_ratio: 0.05
+
+train:
+  # paper §3.2: Adam, beta1=0.9, beta2=0.98, eps=1e-9, 10k warmup,
+  # peak lr 0.05/sqrt(d), L2 weight 1e-6.
+  optimizer: adam
+  betas: [0.9, 0.98]
+  eps: 1.0e-9
+  weight_decay: 1.0e-6
+  warmup_steps: 10000
+  lr_scale: 0.05             # peak_lr = lr_scale / sqrt(encoder_dim)
+  max_epochs: 100
+  batch_size: 8
+  accum_grad: 4
+  grad_clip: 5.0
+  num_workers: 4
+  seed: 1234
+  save_dir: exp/conformer_s
+  log_every: 50

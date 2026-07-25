@@ -1,0 +1,10 @@
+# Verified on Apple Silicon (M5, Python 3.11). Default torch/torchaudio wheels are
+# MPS-capable arm64 builds.
+torch==2.13.0
+torchaudio==2.11.0
+numpy==2.4.6
+sentencepiece==0.2.2
+soundfile==0.14.0      # FLAC reading; avoids the torchcodec dependency torchaudio.load now has
+pyyaml==6.0.3
+jiwer==4.0.0           # WER scoring
+tqdm==4.69.1

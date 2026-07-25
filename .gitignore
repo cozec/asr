@@ -1,0 +1,21 @@
+# Corpora — ~59 GB. Re-fetch with data/download_librispeech.sh (resumable, md5-verified).
+data/LibriSpeech/
+data/downloads/
+data/*.log
+data/*.pid
+
+# Per-model virtualenvs
+.venv/
+
+# Experiment outputs: checkpoints (~107 MB each), manifests, tokenizer models, logs
+exp/
+results/
+logs/
+
+# Third-party repos cloned locally for cross-checking
+reference/
+
+__pycache__/
+*.pyc
+*.pt
+.DS_Store
