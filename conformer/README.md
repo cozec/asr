@@ -41,24 +41,7 @@ and decodes far more cheaply, which is what makes a single-machine run practical
 Two streams — acoustic and linguistic — meet in the joint network. This is the paper's
 model (`head: transducer`):
 
-```mermaid
-flowchart BT
-    x["x_t — acoustic features<br/>80-ch filterbank, 10 ms"]
-    y["y_u-1 — previous text tokens"]
-    enc["Masked Conformer Encoder<br/>acoustic stream<br/>interleaved convolution + self-attention<br/>for local and global context"]
-    pred["Single-Layer LSTM Predictor<br/>linguistic stream<br/>an internal language model over<br/>previously emitted tokens"]
-    joint["Joint Network<br/>combines both streams:<br/>tanh(W_enc·h_enc + W_pred·h_pred) → linear"]
-    sm["Softmax"]
-    p["p(t, u) — next-token probabilities"]
-
-    x --> enc --> joint
-    y --> pred --> joint
-    joint --> sm --> p
-
-    style enc fill:#fdece8,stroke:#e8674a
-    style pred fill:#e9f5ec,stroke:#4aa06a
-    style joint fill:#f6f0e8,stroke:#c98b4a
-```
+![Architecture of the Conformer-Transducer ASR model: acoustic features x_t feed a masked Conformer encoder and previous text tokens y_u-1 feed a single-layer LSTM predictor; a joint network combines both streams via tanh and linear layers, and a softmax yields token probabilities p(t, u).](docs/conformer-transducer-architecture.png)
 
 | | Code | Shape |
 |---|---|---|
