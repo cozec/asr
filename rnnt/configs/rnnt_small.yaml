@@ -1,0 +1,71 @@
+# RNN-T, He et al. 2019 (arXiv:1811.06621) structure at a locally-trainable width.
+#
+# The paper's model is 8 x LSTM(2048) + 640-proj encoder, 2 x LSTM(2048) predictor,
+# ~120M params, trained on 27,500 h of Google-internal voice search on 8x8 TPUs.
+# That is not reproducible here, so widths are scaled down (~22M) while the structure --
+# per-layer projection, layer norm, time reduction N=2 after layer 2 -- is kept exactly.
+
+model:
+  name: rnnt_small
+  # Features: paper §6.2 -- 80-dim log-mel, 25 ms window / 10 ms shift, stacked 3 frames
+  # and downsampled to a 30 ms frame rate (so the encoder sees 80*3 = 240 dims).
+  input_dim: 80
+  frame_stack: 3
+  frame_stride: 3
+
+  # Encoder (paper §3.1): stacked uni-directional LSTM, projection + layer norm per layer.
+  num_layers: 6                  # paper: 8
+  hidden_dim: 768                # paper: 2048
+  proj_dim: 256                  # paper: 640
+  time_reduction_factor: 2       # paper: N=2, a 1.7x speedup with no accuracy loss
+  time_reduction_after: 2        # paper: after the 2nd LSTM layer
+  dropout: 0.1
+
+  # Prediction network: stateless (Ghodsi et al. 2020) instead of the paper's 2x LSTM.
+  # context_size 1 = the paper's pure 2-gram form; 2 = k2/icefall's default.
+  symbol_embedding_dim: 256
+  context_size: 2
+
+  joint_dim: 256                 # paper: 640
+
+data:
+  root: ../data/LibriSpeech
+  train_sets: [train-clean-100]
+  dev_sets: [dev-clean]
+  test_sets: [test-clean, test-other]
+  sample_rate: 16000
+  num_mel_bins: 80
+  frame_length: 25.0
+  frame_shift: 10.0
+  max_duration: 17.0
+  tokenizer: exp/spm_1k.model
+  vocab_size: 1024               # wordpieces; see FINDINGS on why not graphemes
+
+specaug:
+  enabled: true
+  num_freq_masks: 2
+  freq_mask_param: 27
+  num_time_masks: 10
+  time_mask_ratio: 0.05
+
+train:
+  optimizer: adam
+  betas: [0.9, 0.98]
+  eps: 1.0e-9
+  weight_decay: 1.0e-6
+  warmup_steps: 2000             # scaled for 100 h, per the conformer finding
+  lr_scale: 0.05
+  max_epochs: 30
+  batch_size: 8
+  accum_grad: 4
+  grad_clip: 5.0
+  num_workers: 4
+  seed: 1234
+  save_dir: exp/rnnt_small
+  log_every: 50
+
+stream:
+  # Chunk size must be a multiple of time_reduction_factor so no frame is dropped at a
+  # chunk boundary (see LSTMTranscriber.infer).
+  chunk_frames: 16               # 16 x 30 ms = 480 ms of audio per streaming step
+  beam_width: 4

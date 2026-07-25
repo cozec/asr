@@ -1,0 +1,10 @@
+# Verified on Apple Silicon (M5, Python 3.11).
+torch==2.13.0
+torchaudio==2.11.0        # ships RNNT, RNNTBeamSearch and the Emformer RNN-T pipeline
+numpy==2.4.6
+sentencepiece==0.2.2
+soundfile==0.14.0         # file I/O; torchaudio.load would require torchcodec
+sounddevice==0.5.5        # microphone capture for the streaming demo
+pyyaml==6.0.3
+jiwer==4.0.0
+tqdm==4.69.1
