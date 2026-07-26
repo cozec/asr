@@ -34,6 +34,7 @@ words, and out-of-vocabulary words need that lexicon extended.
 | **[Allosaurus](https://github.com/xinjli/allosaurus)** | 737★, last push 2024 | Universal phone recognizer for **2000+ languages**. Language-independent encoder + phone predictor with a per-language *allophone* layer mapping allophones to phonemes. Research-grade, no longer actively developed. |
 | **[wav2vec2 espeak-cv-ft](https://huggingface.co/facebook/wav2vec2-xlsr-53-espeak-cv-ft)** | 418k + 316k downloads | Facebook's IPA-output phoneme models (`xlsr-53` multilingual, `lv-60` English). By far the most-used phoneme ASR weights. **~1 GB — too big for edge as-is**; a distillation or quantization target rather than a deployable. |
 | **[Charsiu](https://github.com/lingjzhu/charsiu)** | 347★, **stale since 2022** | Neural phonetic aligner. Listed for completeness; unmaintained. |
+| **[Multilingual-PR](https://github.com/ASR-project/Multilingual-PR)** | 266★, **stale since 2022**, no license | Student project comparing wav2vec2 / HuBERT / WavLM for phoneme recognition across 5 languages. Its numbers are a useful reference (see below), but the code is 4 years stale and unlicensed. |
 
 ### On-device runtimes (what you would actually deploy into)
 
@@ -94,6 +95,38 @@ The ladder, as reported in wav2vec 2.0 Table 3 ([Baevski et al.
 That folding step matters more than it looks: PER on the 61-phone set is not comparable
 to PER on the folded 39, and papers do not always say which they report. Any number
 quoted without the phone set is unusable.
+
+### Multilingual-PR: the frozen-vs-fine-tuned number
+
+[ASR-project/Multilingual-PR](https://github.com/ASR-project/Multilingual-PR) is the most
+directly useful set of published phoneme numbers found in this search, even though the
+repo itself is stale. It fine-tunes three English-pretrained SSL models — wav2vec2 Base,
+HuBERT Large, WavLM Base/Large — for phoneme recognition on **Common Voice 6.1** in five
+non-English languages, with IPA targets from `phonemizer`.
+
+| regime | avg test PER | best model |
+|---|---|---|
+| **Fine-tuned** | **17.36** | HuBERT Large |
+| **Frozen features** (train only the head) | **28.31** | WavLM Large |
+
+Per language, fine-tuned: Italian 12.67 (62 h) · Turkish 14.19 (2.5 h) · Dutch 16.49
+(13 h) · Russian 18.88 (16 h) · Swedish 19.38 (3 h).
+
+Two things worth taking from it:
+
+**Freezing the encoder costs ~11 PER points** — 28.31 vs 17.36. That is the price of
+linear probing, quantified. Relevant here because freezing is the cheap option for edge
+work, and this says how much accuracy it buys back to fine-tune.
+
+**Turkish at 2.5 h scores 14.19, better than Russian at 16 h.** Hours of data matter less
+than the match between the pretrained model and the target language's phonology. Their
+Swedish scarcity curve makes the same point: 10 min → 39.38 PER, 3 h → 32.68 PER frozen,
+so the first few hours buy a lot and the curve flattens fast.
+
+**These numbers do not sit on the TIMIT ladder.** Different corpus (Common Voice, not
+TIMIT), different phone set (IPA via `phonemizer`, not folded ARPAbet-39), different
+languages. Useful as a cross-lingual reference and for the frozen/fine-tuned ratio; not
+as a substitute for a TIMIT PER.
 
 ### Other corpora
 
