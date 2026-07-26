@@ -8,4 +8,5 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# results/ IS tracked - the WER curve is a deliverable
+# The root .gitignore blanket-ignores results/; the WER curve is a deliverable here.
+!results/

@@ -1,0 +1,115 @@
+{
+  "task": "asr",
+  "model": "facebook/wav2vec2-base",
+  "data": "TIMIT",
+  "train_utts": 3696,
+  "eval_split": "core_test",
+  "eval_utts": 192,
+  "epochs_completed": 20,
+  "epochs_planned": 30,
+  "best_wer": 0.2869,
+  "best_epoch": 17,
+  "final_wer": 0.2927,
+  "curve": [
+    {
+      "epoch": 1.0,
+      "eval_loss": 3.228,
+      "wer": 1.0
+    },
+    {
+      "epoch": 2.0,
+      "eval_loss": 3.022,
+      "wer": 1.0
+    },
+    {
+      "epoch": 3.0,
+      "eval_loss": 2.979,
+      "wer": 1.0
+    },
+    {
+      "epoch": 4.0,
+      "eval_loss": 2.358,
+      "wer": 1.0
+    },
+    {
+      "epoch": 5.0,
+      "eval_loss": 0.8955,
+      "wer": 0.6524
+    },
+    {
+      "epoch": 6.0,
+      "eval_loss": 0.6113,
+      "wer": 0.4869
+    },
+    {
+      "epoch": 7.0,
+      "eval_loss": 0.5496,
+      "wer": 0.4332
+    },
+    {
+      "epoch": 8.0,
+      "eval_loss": 0.5027,
+      "wer": 0.3744
+    },
+    {
+      "epoch": 9.0,
+      "eval_loss": 0.5041,
+      "wer": 0.3546
+    },
+    {
+      "epoch": 10.0,
+      "eval_loss": 0.487,
+      "wer": 0.3399
+    },
+    {
+      "epoch": 11.0,
+      "eval_loss": 0.4963,
+      "wer": 0.324
+    },
+    {
+      "epoch": 12.0,
+      "eval_loss": 0.5499,
+      "wer": 0.3355
+    },
+    {
+      "epoch": 13.0,
+      "eval_loss": 0.498,
+      "wer": 0.3118
+    },
+    {
+      "epoch": 14.0,
+      "eval_loss": 0.533,
+      "wer": 0.2965
+    },
+    {
+      "epoch": 15.0,
+      "eval_loss": 0.5375,
+      "wer": 0.3029
+    },
+    {
+      "epoch": 16.0,
+      "eval_loss": 0.5404,
+      "wer": 0.2971
+    },
+    {
+      "epoch": 17.0,
+      "eval_loss": 0.5556,
+      "wer": 0.2869
+    },
+    {
+      "epoch": 18.0,
+      "eval_loss": 0.5803,
+      "wer": 0.2927
+    },
+    {
+      "epoch": 19.0,
+      "eval_loss": 0.5675,
+      "wer": 0.2939
+    },
+    {
+      "epoch": 20.0,
+      "eval_loss": 0.5743,
+      "wer": 0.2927
+    }
+  ]
+}
