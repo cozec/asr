@@ -1,0 +1,9 @@
+# Verified on Apple Silicon (M5, Python 3.11).
+torch==2.13.0
+torchaudio==2.11.0
+numpy==2.4.6
+soundfile==0.14.0        # torchaudio.load would require torchcodec in 2.11
+matplotlib==3.11.1       # tutorial figures
+requests==2.34.2         # replaces the removed torchaudio.utils.download_asset
+jiwer==4.0.0             # WER
+flashlight-text==0.0.7   # backs torchaudio.models.decoder.ctc_decoder (beam search)

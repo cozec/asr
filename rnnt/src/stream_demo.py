@@ -197,6 +197,9 @@ def main() -> None:
     parser.add_argument("--beam-width", type=int, default=None)
     parser.add_argument("--realtime", action="store_true",
                         help="with --source file, pace playback at 1x to mimic a mic")
+    parser.add_argument("--seconds", type=float, default=None,
+                        help="stop after N seconds of audio and print the summary "
+                             "(otherwise run until Ctrl-C)")
     args = parser.parse_args()
 
     if args.model == "ours":
@@ -230,6 +233,10 @@ def main() -> None:
             num_chunks += 1
             # Rewrite one line so the partial transcript updates in place.
             print(f"\r\033[K> {transcript[-110:]}", end="", flush=True)
+            if args.seconds is not None:
+                elapsed = num_chunks * backend.chunk_samples / backend.sample_rate
+                if elapsed >= args.seconds:
+                    break
     except KeyboardInterrupt:
         pass
 

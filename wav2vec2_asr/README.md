@@ -1,0 +1,123 @@
+# wav2vec2 — Speech Recognition pipeline
+
+Reproduction of torchaudio's **[Speech Recognition with
+Wav2Vec2](https://docs.pytorch.org/audio/2.8/tutorials/speech_recognition_pipeline_tutorial.html)**
+tutorial, plus two quantitative extensions it stops short of: what beam search actually
+buys over greedy decoding, and how the model degrades as labeled data shrinks.
+
+Model: **[wav2vec 2.0](https://arxiv.org/abs/2006.11477)** (Baevski et al., NeurIPS 2020).
+
+## The tutorial, reproduced
+
+```bash
+python src/pipeline_demo.py
+```
+
+```
+bundle      : WAV2VEC2_ASR_BASE_960H
+labels (29) : ('-', '|', 'E', 'T', 'A', 'O', 'N', 'I', 'H', 'S', ...)
+model params: 94.4M | device cpu
+audio       : Lab41-SRI-VOiCES-src-sp0307-ch127535-sg0042.wav  (3.40s)
+features    : 12 transformer layers, each (1, 169, 768)
+emission    : (1, 169, 29)  (49.7 frames/s)
+
+transcript  : I|HAD|THAT|CURIOSITY|BESIDE|ME|AT|THIS|MOMENT|
+as words    : I HAD THAT CURIOSITY BESIDE ME AT THIS MOMENT
+```
+
+That matches the tutorial's documented output exactly. The three figures it plots are
+written to [`plots/`](plots/): the waveform, the 12 per-layer feature maps, and the
+emission matrix.
+
+## Beam search vs. greedy decoding
+
+The tutorial decodes greedily — "simply pick up the best hypothesis at each time step."
+This measures what the alternatives cost and gain (50 utterances of test-clean):
+
+| decoder | lexicon | LM | WER% | decode time | vs greedy |
+|---|---|---|---|---|---|
+| greedy | – | – | 2.15 | 0.01 s | 1× |
+| beam 5 | no | no | **2.15** | 0.10 s | 8× |
+| beam 50 | no | no | **2.15** | 1.07 s | 87× |
+| beam 5 | yes | 4-gram | 2.46 | 0.10 s | 8× |
+| beam 50 | yes | 4-gram | **1.64** | 0.88 s | 72× |
+
+```bash
+python scripts/compare_decoders.py --num 50 --with-lm
+```
+
+Three things worth taking from this:
+
+**Beam search on its own does nothing here.** Identical WER at beam 5 and beam 50, for up
+to 87× the decode cost. That is not a bug — CTC assumes outputs are conditionally
+independent given the audio, so with no external knowledge the per-frame argmax path
+already *is* the best path. Widening the search re-ranks the same acoustic scores.
+
+**The gain comes from the language model, not the search.** Adding a lexicon and 4-gram
+LM at beam 50 takes 2.15% → **1.64%**, a 24% relative improvement.
+
+**A narrow beam plus an LM is worse than no beam at all** (2.46% vs 2.15%). The LM
+reorders hypotheses, so the beam has to be wide enough to still be holding the one the LM
+will eventually prefer. Beam width and LM are a package; adding the LM alone is a
+regression.
+
+## Labeled-data efficiency
+
+wav2vec2's actual claim is about labeled data, not architecture. These three bundles are
+the *same* 94M-parameter model with the *same* self-supervised pretraining on 960 h of
+unlabeled LibriSpeech — they differ only in how much **labeled** data fine-tuned them
+(30 utterances of test-clean, greedy decoding):
+
+| labeled data | params | WER% | RTF |
+|---|---|---|---|
+| 10 minutes | 94M | 44.41 | 0.014 |
+| 100 hours | 94M | 6.06 | 0.013 |
+| 960 hours | 94M | **2.33** | 0.013 |
+
+```bash
+python scripts/evaluate.py --num 30 \
+    --bundles WAV2VEC2_ASR_BASE_10M WAV2VEC2_ASR_BASE_100H WAV2VEC2_ASR_BASE_960H
+```
+
+The failure mode is more informative than the number. With 10 minutes of labels:
+
+```
+ref   : HE HOPED THERE WOULD BE STEW FOR DINNER TURNIPS AND CARROTS AND BRUISED POTATOES
+10 min: HE HOPED THER WOLD BE STO  FOR DINER  TERNEIPS AND CARETS  AND BROSED  PATATOWS
+100 h : HE HOPED THERE WOULD BE STO FOR DINNER TURNIPS AND CARRATS AND BRUISED POTATOES
+960 h : HE HOPED THERE WOULD BE STEW FOR DINNER TURNIPS AND CARROTS AND BRUISED POTATOES
+```
+
+`TERNEIPS`, `PATATOWS`, `BROSED` — the words are *phonetically right and orthographically
+wrong*. The self-supervised representation has already learned the sounds; what the
+labeled data buys is spelling. That is the paper's thesis made visible.
+
+## Layout
+
+```
+src/pipeline_demo.py       the tutorial, end to end, with plots
+src/decoder.py             GreedyCTCDecoder (tutorial) + '|' -> space
+scripts/evaluate.py        WER/RTF on LibriSpeech; compares bundles
+scripts/compare_decoders.py  greedy vs beam vs beam+LM
+tests/test_wav2vec2.py     10 assertions
+plots/, results/           figures and JSON output
+```
+
+## Setup
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+`scripts/compare_decoders.py --with-lm` additionally needs `flashlight-text` (in
+requirements) and downloads the ~3 GB librispeech-4-gram lexicon and LM on first use.
+Evaluation reads the shared LibriSpeech corpus in [`../data/`](../data/).
+
+## Notes
+
+- **`torchaudio.utils.download_asset` no longer exists** in 2.11; the underlying URL is
+  still served, so `pipeline_demo.download_asset` fetches it directly.
+- **`torchaudio.load` requires torchcodec** in 2.11 — this project uses `soundfile`.
+- **torch.hub's downloader stalls** on large checkpoints here; see
+  [FINDINGS.md](FINDINGS.md) for the curl workaround.
