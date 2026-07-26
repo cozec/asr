@@ -1,0 +1,33 @@
+graph LR
+    WAV["TIMIT .WAV<br>16 kHz NIST SPHERE<br>3696 train / 192 core test"]
+    TXT["TIMIT .TXT<br>orthographic"]
+    PHN["TIMIT .PHN<br>61 phones"]
+    FOLD["fold 61 to 39<br>Lee and Hon 1989"]
+
+    CONV["conv feature encoder<br>7 layers, 4.2M<br>FROZEN"]
+    TRF["12 transformer layers<br>90M, fine-tuned<br>768-dim, 50 frames/s"]
+
+    H1["CTC head<br>768 to 30 chars"]
+    H2["CTC head<br>768 to 41 tokens"]
+
+    WER["step 1: WER"]
+    PER["step 2: PER"]
+
+    WAV --> CONV
+    CONV --> TRF
+    TRF --> H1
+    TRF --> H2
+    H1 --> WER
+    H2 --> PER
+    TXT -. "CTC target" .-> H1
+    PHN --> FOLD
+    FOLD -. "CTC target" .-> H2
+
+    classDef frozen fill:#e8eef8,stroke:#4a6fa5,stroke-width:2px
+    classDef tuned fill:#e9f5ec,stroke:#4aa06a,stroke-width:2px
+    classDef head fill:#fdece8,stroke:#e8674a,stroke-width:2px
+    classDef data fill:#f4f4f4,stroke:#999999
+    class CONV frozen
+    class TRF tuned
+    class H1,H2 head
+    class WAV,TXT,PHN,FOLD,WER,PER data

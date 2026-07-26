@@ -16,6 +16,20 @@ python src/finetune.py --task asr      --epochs 30    # step 1
 python src/finetune.py --task phoneme  --epochs 30    # step 2
 ```
 
+## One trunk, two heads
+
+![wav2vec2 TIMIT fine-tuning: TIMIT .WAV audio feeds a frozen 7-layer convolutional feature encoder then 12 fine-tuned transformer layers; that shared trunk splits into two CTC heads, one projecting 768 to 30 character tokens scored by WER, the other 768 to 41 phone tokens scored by PER. The .TXT orthographic transcripts supervise the first head; the .PHN phonetic transcripts, folded from 61 to 39 phones, supervise the second.](diagrams/wav2vec2-timit-two-heads.png)
+
+The same pretrained checkpoint and the same 3696 training utterances feed both tasks. The
+convolutional feature encoder stays **frozen** (the blog's `freeze_feature_encoder()`), so
+only the 90M-parameter transformer and a small CTC head are trained. What changes between
+the two steps is a single projection — **768 → 30** character tokens versus **768 → 41**
+phone tokens — plus where the supervision comes from: `.TXT` for step 1, `.PHN` folded
+61 → 39 for step 2.
+
+Sources: [`diagrams/`](diagrams/) holds the mermaid `.mmd`, an editable `.excalidraw`
+scene, and rendered `.svg` / `.png`.
+
 ## The data
 
 **TIMIT is licensed (LDC93S1) and cannot be downloaded from the blog's

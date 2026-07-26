@@ -1,6 +1,8 @@
 .venv/
 data/
 exp/
+
+# diagrams/ IS tracked - the README embeds the rendered png
 logs/
 __pycache__/
 *.pyc

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Step 1 (ASR) then step 2 (phoneme). Evaluated on TIMIT's core test set (192
-# utterances) -- the standard benchmark, and far lighter on memory than the full 1344.
+# Step 2 (phoneme) after step 1 (ASR) finishes. Both: 30 epochs, batch 8 x accum 4
+# (the blog's effective 32), evaluated on TIMIT's 192-utterance core test set.
 cd "$(dirname "$0")/.."
-set -x
-.venv/bin/python -u src/finetune.py --task asr --epochs 30 --batch-size 8 --accum 4 \
-    --eval-split core_test --output-dir exp/wav2vec2-timit-asr > logs/train_asr.log 2>&1
+while pgrep -f "finetune.py --task asr" > /dev/null; do sleep 60; done
+echo "[$(date '+%H:%M')] ASR finished -> starting phoneme"
 .venv/bin/python -u src/finetune.py --task phoneme --epochs 30 --batch-size 8 --accum 4 \
     --eval-split core_test --output-dir exp/wav2vec2-timit-phoneme > logs/train_phoneme.log 2>&1
+echo "[$(date '+%H:%M')] phoneme finished"
