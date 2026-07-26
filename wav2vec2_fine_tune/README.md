@@ -43,6 +43,53 @@ random head.
 Sources: [`diagrams/`](diagrams/) holds the mermaid `.mmd`, an editable `.excalidraw`
 scene, and rendered `.svg` / `.png`.
 
+## Results
+
+### Step 1 — ASR: WER 0.2869
+
+Fine-tuned `facebook/wav2vec2-base` on 3696 TIMIT utterances, evaluated on the
+192-utterance core test set. **Stopped at epoch 20 of 30** — see [Honest
+scope](#honest-scope) below.
+
+| epoch | WER | |
+|---|---|---|
+| 1–4 | 1.0000 | model emits only blanks |
+| **5** | 0.6524 | the plateau breaks |
+| 8 | 0.3744 | |
+| 11 | 0.3240 | |
+| 14 | 0.2965 | |
+| **17** | **0.2869** | best |
+| 20 | 0.2927 | converged |
+
+Full curve: [`results/asr_timit.json`](results/asr_timit.json).
+
+**WER is exactly 1.00 for four epochs, then collapses.** That is the freshly initialized
+head doing its job: it starts as noise over 30 characters, so the model emits nothing but
+blanks until it learns the inventory. `warmup_steps=1000` (epoch 8.6) deliberately holds
+the learning rate down through this phase so a random head cannot wreck the pretrained
+trunk. By epoch 14 it has converged — the last 7 epochs span 0.2869–0.3029, a spread of
+0.016, while `eval_loss` *rises* from 0.487 to 0.574. That divergence is mild overfitting,
+and the reason stopping early cost nothing.
+
+### What the errors look like
+
+```
+ref: in wage negotiations the industry bargains as a unit with a single union
+hyp: in wage negociiations the industry bargons ias a unit with a single union
+
+ref: materials ceramic modeling clay red white or buff
+hyp: materials seremic modeling clay red whiht or bufh
+
+ref: artificial intelligence is for real
+hyp: artefficial intelligence is for wreal
+```
+
+Every error is a **phonetically plausible misspelling** — `negociiations`, `seremic`,
+`artefficial`, `wreal`. The acoustics are right and the orthography is wrong, which is
+what character-level CTC with no language model does. It is also the argument for step 2:
+if the model is really predicting sounds, phones are the more honest target than English
+spelling.
+
 ## The data
 
 **TIMIT is licensed (LDC93S1) and cannot be downloaded from the blog's
@@ -100,6 +147,35 @@ fails on each without these:
   back to CPU while the rest stays on the GPU.
 - **`fp16` is off** (unsupported on MPS); the blog's GPU recipe uses it.
 - Batch 8 × 4 accumulation reproduces the blog's effective batch of 32 within 16 GB.
+
+## Honest scope
+
+What ran, and what did not:
+
+| | status |
+|---|---|
+| Step 1 pipeline | complete, trained, **WER 0.2869** |
+| Step 2 pipeline | complete and smoke-tested end to end, emits PER — **never trained to convergence** |
+| Step 1 epochs | **20 of 30** |
+
+**Step 2 has no result.** The code path works — it builds the 41-token phone vocabulary,
+trains, and computes PER — but the only runs were smoke tests on a couple of dozen
+utterances, which produce PER ≈ 0.99 and mean nothing. A real number needs the full run:
+
+```bash
+python src/finetune.py --task phoneme --epochs 20 --eval-split core_test
+```
+
+**Why it stopped at 20 epochs.** Not a technical failure — WER had been flat for 7 epochs
+and `eval_loss` was climbing, so the remaining 10 epochs had nothing to offer. The cost
+was real: 16.6 h wall-clock for 2327 steps, an average of **25.7 s/step against ~5 s/step
+when the machine is actually awake**. The watchdog log shows multi-hour stretches
+completing ~150 steps, consistent with the Mac sleeping overnight. Anyone reproducing this
+should either disable sleep (`caffeinate -i`) or run it on a GPU box.
+
+**Not comparable to the blog's 0.221.** That number is over TIMIT's full 1344-utterance
+test set after 30 epochs; this is the 192-utterance core test set at 20 epochs. Different
+denominator, fewer epochs.
 
 ## Layout
 

@@ -7,3 +7,5 @@ logs/
 __pycache__/
 *.pyc
 .DS_Store
+
+# results/ IS tracked - the WER curve is a deliverable
