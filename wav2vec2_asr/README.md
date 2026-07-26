@@ -45,7 +45,25 @@ as words    : I HAD THAT CURIOSITY BESIDE ME AT THIS MOMENT
 
 That matches the tutorial's documented output exactly. The three figures it plots are
 written to [`plots/`](plots/): the waveform, the 12 per-layer feature maps, and the
-emission matrix.
+emission matrix below.
+
+### What CTC output actually looks like
+
+![Emission heatmap: 29 CTC labels on the y-axis against 169 frames on the x-axis. The blank row dominates throughout, with isolated bright spots on individual letters where characters are emitted.](plots/wav2vec2_asr_base_960h_emission.png)
+
+The y-axis carries the real CTC labels rather than class indices, which makes the
+model's behaviour legible:
+
+- **The blank row dominates almost everywhere.** CTC emits a character only at the few
+  frames where it is confident and stays blank in between — that is what "collapse
+  repeats, strip blanks" is cleaning up.
+- **Frames 0–30 are near-uniform**: leading silence, before speech starts.
+- **Characters fire as isolated spikes.** Reading the per-frame argmax gives
+  `I||HAD||TTHATT||CURRIOOSITYY|||BESIDE||MEE|||AT||TTHISS|||MMOMENTT|||`, which
+  collapses to exactly the transcript above — doubled letters (`TT`, `MM`) are the same
+  character held across two frames, not a spelling error, and are why the collapse step
+  must run *before* blanks are removed.
+- **Rare letters sit dark**: `X`, `J`, `Q`, `Z` never light up in this utterance.
 
 ## Beam search vs. greedy decoding
 

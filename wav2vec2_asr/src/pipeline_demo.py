@@ -93,12 +93,34 @@ def plot_features(features, path):
     plt.close(fig)
 
 
-def plot_emission(emission, path):
+def plot_emission(emission, path, labels=None):
+    """Emission heatmap, with the actual character labels on the y-axis.
+
+    wav2vec2's vocabulary is 29 CTC labels: '-' is the blank and '|' the word
+    separator; the rest are letters and the apostrophe. Naming them makes the plot
+    readable -- the bright top row is blank dominating, as CTC output does.
+    """
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(12, 4))
+    fig, ax = plt.subplots(figsize=(13, 6))
     ax.imshow(emission[0].cpu().T, interpolation="nearest", aspect="auto")
-    ax.set(title="Classification result", xlabel="frame (time axis)", ylabel="class")
+    ax.set(title="Classification result (emission)", xlabel="frame (time axis)")
+
+    if labels is not None:
+        pretty = []
+        for label in labels:
+            if label == "-":
+                pretty.append("- (blank)")
+            elif label == "|":
+                pretty.append("| (space)")
+            else:
+                pretty.append(label)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(pretty, fontsize=8, fontfamily="monospace")
+        ax.set_ylabel("CTC label")
+    else:
+        ax.set_ylabel("class")
+
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
@@ -160,7 +182,7 @@ def main() -> None:
         plot_waveform(waveform.cpu(), bundle.sample_rate,
                       os.path.join(plots_dir, f"{tag}_waveform.png"))
         plot_features(features, os.path.join(plots_dir, f"{tag}_features.png"))
-        plot_emission(emission, os.path.join(plots_dir, f"{tag}_emission.png"))
+        plot_emission(emission, os.path.join(plots_dir, f"{tag}_emission.png"), labels)
         print(f"\nplots       : {plots_dir}/{tag}_{{waveform,features,emission}}.png")
 
 
