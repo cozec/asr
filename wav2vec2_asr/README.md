@@ -68,7 +68,8 @@ model's behaviour legible:
 ## Beam search vs. greedy decoding
 
 The tutorial decodes greedily — "simply pick up the best hypothesis at each time step."
-This measures what the alternatives cost and gain (50 utterances of test-clean):
+This measures what the alternatives cost and gain (first 50 utterances of test-clean
+— see the caveat below):
 
 | decoder | lexicon | LM | WER% | decode time | vs greedy |
 |---|---|---|---|---|---|
@@ -97,12 +98,37 @@ reorders hypotheses, so the beam has to be wide enough to still be holding the o
 will eventually prefer. Beam width and LM are a package; adding the LM alone is a
 regression.
 
+### How prefix beam search actually unrolls
+
+![CTC prefix beam search over four frames of the tutorial audio: three current hypotheses per step, each fanning out into three proposed extensions, with dashed lines showing surviving extensions flowing into the next step's hypotheses and three of them merging into the same prefix.](plots/wav2vec2_asr_base_960h_beam_search.png)
+
+```bash
+python src/plot_beam_search.py               # or --start-frame 44 --steps 5
+```
+
+Every node, edge and probability is from an actual prefix beam search run on these
+emissions — not a schematic. The window (frames 33–36) is chosen because it is where
+this utterance is genuinely uncertain; most frames are ~1.00 confident and would produce
+a tree with nothing to look at.
+
+Reading it left to right: at **T=1** the beam holds `I`, `IV`, `I'` and the frame
+proposes `|` (0.85), blank (0.15), `E` (0.00). At **T=3** the model is torn — blank 0.61
+vs `|` 0.39 — so `I|` can either stay put or double its separator. By **T=5** the top
+hypothesis is `I|H`, the start of `I HAD`.
+
+The dashed lines show the mechanism the [comparison above](#beam-search-vs-greedy-decoding)
+depends on: **three different extensions collapse into the same prefix**. Extending `I|`
+with a blank leaves it unchanged, and extending it with `|` again also leaves it
+unchanged (a repeat with no blank between collapses). Their probabilities *add*. That
+merging is why a CTC beam is a beam over *prefixes*, not over paths — and why widening it
+finds nothing new unless an LM is there to re-score the merged results.
+
 ## Labeled-data efficiency
 
 wav2vec2's actual claim is about labeled data, not architecture. These three bundles are
 the *same* 94M-parameter model with the *same* self-supervised pretraining on 960 h of
 unlabeled LibriSpeech — they differ only in how much **labeled** data fine-tuned them
-(30 utterances of test-clean, greedy decoding):
+(first 30 utterances of test-clean, greedy decoding — see the caveat below):
 
 | labeled data | params | WER% | RTF |
 |---|---|---|---|
@@ -128,11 +154,22 @@ ref   : HE HOPED THERE WOULD BE STEW FOR DINNER TURNIPS AND CARROTS AND BRUISED 
 wrong*. The self-supervised representation has already learned the sounds; what the
 labeled data buys is spelling. That is the paper's thesis made visible.
 
+## Caveat on the WER numbers above
+
+They come from LibriSpeech **test-clean**, but only the **first N utterances in sorted
+order** — which all belong to a single speaker (`1089`), 4–6 minutes of audio out of
+test-clean's 2620 utterances / 5.4 hours. That is enough to show the *direction* of each
+effect, but it is not a trustworthy absolute WER: one speaker, one recording condition.
+
+A full-test-clean run is in progress and these tables will be replaced with it. Reproduce
+with `--num 100000` (any number ≥ 2620) on either script.
+
 ## Layout
 
 ```
 src/pipeline_demo.py       the tutorial, end to end, with plots
 src/plot_model.py          architecture diagram, introspected from the checkpoint
+src/plot_beam_search.py    prefix beam search unrolled on real emissions
 src/decoder.py             GreedyCTCDecoder (tutorial) + '|' -> space
 scripts/evaluate.py        WER/RTF on LibriSpeech; compares bundles
 scripts/compare_decoders.py  greedy vs beam vs beam+LM
