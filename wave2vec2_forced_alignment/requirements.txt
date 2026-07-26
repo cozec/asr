@@ -1,0 +1,8 @@
+torch>=2.0.0
+torchaudio>=2.0.0
+torchcodec>=0.8.0      # torchaudio.load() routes through TorchCodec from 2.9; without it load() raises ImportError
+matplotlib>=3.7.0
+gtts>=2.3.0
+soundfile>=0.12.0
+# sox removed: torchaudio.set_audio_backend() no longer exists (dropped in 2.1),
+# so the sox backend cannot be selected and the PyPI `sox` wrapper goes unused.

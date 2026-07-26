@@ -1,0 +1,9 @@
+.venv/
+demo_audio.mp3
+demo_audio.wav
+data/
+plots/words/
+install.log
+__pycache__/
+*.pyc
+.DS_Store
