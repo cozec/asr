@@ -13,3 +13,5 @@ data/Lab41-*.wav
 
 # The root .gitignore blanket-ignores results/; the alignment output belongs in the repo.
 !results/
+.venv-bfa/
+.conda-mfa/

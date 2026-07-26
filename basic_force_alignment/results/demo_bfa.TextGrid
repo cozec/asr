@@ -1,0 +1,80 @@
+File type = "ooTextFile"
+Object class = "TextGrid"
+
+xmin = 0
+xmax = 1.656
+tiers? <exists>
+size = 2
+item []:
+    item [1]:
+        class = "IntervalTier"
+        name = "phonemes"
+        xmin = 0
+        xmax = 1.656
+        intervals: size = 12
+        intervals [1]:
+            xmin = 0.09935999298095703
+            xmax = 0.13247999572753907
+            text = "h"
+        intervals [2]:
+            xmin = 0.18215998840332032
+            xmax = 0.19871998596191406
+            text = "ə"
+        intervals [3]:
+            xmin = 0.19871998596191406
+            xmax = 0.31463998413085936
+            text = "l"
+        intervals [4]:
+            xmin = 0.34775997924804686
+            xmax = 0.36431997680664063
+            text = "oʊ"
+        intervals [5]:
+            xmin = 0.5961599731445313
+            xmax = 0.6292799682617187
+            text = "w"
+        intervals [6]:
+            xmin = 0.6955199584960937
+            xmax = 0.7120800170898437
+            text = "ɜː"
+        intervals [7]:
+            xmin = 0.761760009765625
+            xmax = 0.8114400024414062
+            text = "l"
+        intervals [8]:
+            xmin = 0.8445599975585938
+            xmax = 0.894239990234375
+            text = "d"
+        intervals [9]:
+            xmin = 0.9439199829101562
+            xmax = 0.9770399780273438
+            text = "t"
+        intervals [10]:
+            xmin = 1.043280029296875
+            xmax = 1.0598399658203126
+            text = "ə"
+        intervals [11]:
+            xmin = 1.0929599609375
+            xmax = 1.159199951171875
+            text = "d"
+        intervals [12]:
+            xmin = 1.1923199462890626
+            xmax = 1.2088800048828126
+            text = "eɪ"
+    item [2]:
+        class = "IntervalTier"
+        name = "words"
+        xmin = 0
+        xmax = 1.656
+        intervals: size = 3
+        intervals [1]:
+            xmin = 0.09935999298095703
+            xmax = 0.36431997680664063
+            text = "hello"
+        intervals [2]:
+            xmin = 0.5961599731445313
+            xmax = 0.894239990234375
+            text = "world"
+        intervals [3]:
+            xmin = 0.9439199829101562
+            xmax = 1.2088800048828126
+            text = "today"

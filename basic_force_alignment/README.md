@@ -1,4 +1,4 @@
-# Forced Alignment with Gentle (Kaldi)
+# Forced Alignment: Gentle, MFA, and BFA
 
 [Gentle](https://github.com/strob/gentle) is a forced aligner built on **Kaldi** — a
 classical HMM/GMM+DNN pipeline with a pronunciation lexicon. It is the counterpart to
@@ -101,6 +101,60 @@ The boundaries land on formant transitions — `ow` covers the falling formant t
 "hello", `er` covers the rising F2 in "world" — and all 3 words aligned with none
 rejected.
 
+## Four aligners, one clip
+
+Three aligners installed here plus the CTC one next door, all on `data/demo_audio.wav`:
+
+```bash
+# Gentle (Kaldi)
+cd gentle && python3 align.py ../data/demo_audio.wav ../data/demo_audio.txt -o ../results/demo_audio_alignment.json
+
+# MFA (Kaldi) -- conda, needs an acoustic model + pronunciation dictionary
+.conda-mfa/bin/mfa model download acoustic english_us_arpa
+.conda-mfa/bin/mfa model download dictionary english_us_arpa
+.conda-mfa/bin/mfa align --clean mfa_corpus english_us_arpa english_us_arpa results/mfa_out
+
+# BFA (CUPE encoder + CTC) -- pip, needs espeak-ng
+.venv-bfa/bin/balign data/demo_audio.wav "hello world today" results/demo_bfa.json --preset=en-us
+
+.venv/bin/python compare_aligners.py
+```
+
+![Spectrogram above four horizontal bar tracks, one per aligner. Gentle and MFA bars are nearly identical and span the full words; BFA and wav2vec2 bars are visibly shorter, ending earlier on every word.](plots/4_aligner_comparison.png)
+
+| aligner | hello | world | today |
+|---|---|---|---|
+| Gentle (Kaldi) | 0.08 – 0.53 | 0.53 – 0.90 | 0.93 – 1.50 |
+| MFA (Kaldi) | 0.08 – 0.50 | 0.50 – 0.94 | 0.94 – 1.50 |
+| BFA (CUPE+CTC) | 0.10 – 0.36 | 0.60 – 0.89 | 0.94 – 1.21 |
+| wav2vec2 (CTC) | 0.02 – 0.40 | 0.55 – 0.87 | 0.95 – 1.33 |
+
+Mean absolute deviation from Gentle:
+
+| | start | end |
+|---|---|---|
+| MFA (Kaldi) | **13 ms** | **23 ms** |
+| BFA (CUPE+CTC) | 33 ms | 154 ms |
+| wav2vec2 (CTC) | 33 ms | 110 ms |
+
+**The split is by algorithm family, not by implementation.** Gentle and MFA are separate
+codebases by different authors, but both are Kaldi HMM chains with a pronunciation
+lexicon, and they agree to **13 ms on starts and 23 ms on ends** — near-identical. The two
+CTC systems agree with them on *starts* (33 ms) but end words 110–154 ms earlier, every
+time, in the same direction.
+
+That is not error, it is a definitional difference. An HMM aligner must assign every frame
+to some phone state, so a word runs until the next word's model takes over — trailing
+voicing, release bursts and short pauses all land inside the word. CTC emits a spike where
+evidence for a character peaks and is blank elsewhere, so a word ends when its last
+character's spike passes. BFA makes this explicit: its stated contribution is modelling
+inter-phoneme gaps and silences, and it produces the tightest boundaries of the four.
+
+Practical read: if you need boundaries that tile the audio with no gaps (phonetics,
+TTS training data), the HMM aligners give you that by construction. If you want tight
+boundaries around actual acoustic evidence (subtitle timing, clipping words out), the CTC
+aligners are closer to what you mean.
+
 ## Getting Gentle to run
 
 The demo needs `ext/k3` and `ext/m3`, compiled Kaldi binaries that the repo does not
@@ -145,11 +199,22 @@ transcripts.
 ## Layout
 
 ```
-plot_alignment.py           turns the JSON into the three figures
+plot_alignment.py           Gentle JSON -> the three figures
+compare_aligners.py         all four aligners on one axis
 plots/                      the figures
-results/lucier_alignment.json   the alignment output (tracked)
+results/                    alignment outputs (tracked)
+  lucier_alignment.json       Gentle, 96s recording
+  demo_audio_alignment.json   Gentle, demo clip
+  demo_bfa.json/.TextGrid     BFA
+  mfa_out/demo_audio.TextGrid MFA
+mfa_corpus/                 MFA input format (audio + .lab transcript)
 gentle/                     upstream strob/gentle -- NOT tracked here
+.venv-bfa/, .conda-mfa/     per-aligner environments -- NOT tracked
 ```
+
+Each aligner needs its own environment: Gentle runs on system Python with Kaldi
+binaries, BFA is `pip install bournemouth-forced-aligner` plus `espeak-ng`, and MFA is
+conda-only (`conda create -c conda-forge montreal-forced-aligner`, via miniforge).
 
 `gentle/` is gitignored: it is a third-party repo with its own history and a Kaldi
 submodule, so it is cloned rather than vendored. To reproduce from a fresh checkout:

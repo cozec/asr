@@ -1,0 +1,257 @@
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.656,
+      "text": "hello world today",
+      "ph66": [
+        50,
+        8,
+        56,
+        26,
+        61,
+        10,
+        56,
+        31,
+        30,
+        8,
+        31,
+        24
+      ],
+      "pg16": null,
+      "coverage_analysis": {
+        "target_count": 9,
+        "aligned_count": 9,
+        "missing_count": 0,
+        "extra_count": 0,
+        "coverage_ratio": 1.0,
+        "missing_phonemes": [],
+        "extra_phonemes": [],
+        "bad_alignment": false
+      },
+      "ipa": [
+        "h",
+        "ə",
+        "l",
+        "oʊ",
+        "w",
+        "ɜː",
+        "l",
+        "d",
+        "t",
+        "ə",
+        "d",
+        "eɪ"
+      ],
+      "word_num": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2
+      ],
+      "words": [
+        "hello",
+        "world",
+        "today"
+      ],
+      "phoneme_ts": [
+        {
+          "phoneme_id": 50,
+          "phoneme_label": "h",
+          "ipa_label": "h",
+          "start_ms": 99.35999298095703,
+          "end_ms": 132.47999572753906,
+          "confidence": 0.6797863245010376,
+          "is_estimated": false,
+          "target_seq_idx": 0,
+          "index": 0
+        },
+        {
+          "phoneme_id": 8,
+          "phoneme_label": "ə",
+          "ipa_label": "ə",
+          "start_ms": 182.1599884033203,
+          "end_ms": 198.71998596191406,
+          "confidence": 0.0005022016121074557,
+          "is_estimated": false,
+          "target_seq_idx": 1,
+          "index": 1
+        },
+        {
+          "phoneme_id": 56,
+          "phoneme_label": "l",
+          "ipa_label": "l",
+          "start_ms": 198.71998596191406,
+          "end_ms": 314.6399841308594,
+          "confidence": 0.6361206769943237,
+          "is_estimated": false,
+          "target_seq_idx": 2,
+          "index": 2
+        },
+        {
+          "phoneme_id": 26,
+          "phoneme_label": "oʊ",
+          "ipa_label": "oʊ",
+          "start_ms": 347.7599792480469,
+          "end_ms": 364.3199768066406,
+          "confidence": 0.9975588321685791,
+          "is_estimated": false,
+          "target_seq_idx": 3,
+          "index": 3
+        },
+        {
+          "phoneme_id": 61,
+          "phoneme_label": "w",
+          "ipa_label": "w",
+          "start_ms": 596.1599731445312,
+          "end_ms": 629.2799682617188,
+          "confidence": 0.9911026954650879,
+          "is_estimated": false,
+          "target_seq_idx": 4,
+          "index": 4
+        },
+        {
+          "phoneme_id": 10,
+          "phoneme_label": "ʌ",
+          "ipa_label": "ɜː",
+          "start_ms": 695.5199584960938,
+          "end_ms": 712.0800170898438,
+          "confidence": 0.0008808127022348344,
+          "is_estimated": false,
+          "target_seq_idx": 5,
+          "index": 5
+        },
+        {
+          "phoneme_id": 56,
+          "phoneme_label": "l",
+          "ipa_label": "l",
+          "start_ms": 761.760009765625,
+          "end_ms": 811.4400024414062,
+          "confidence": 0.8118482232093811,
+          "is_estimated": false,
+          "target_seq_idx": 6,
+          "index": 6
+        },
+        {
+          "phoneme_id": 31,
+          "phoneme_label": "d",
+          "ipa_label": "d",
+          "start_ms": 844.5599975585938,
+          "end_ms": 894.239990234375,
+          "confidence": 0.2522119879722595,
+          "is_estimated": false,
+          "target_seq_idx": 7,
+          "index": 7
+        },
+        {
+          "phoneme_id": 30,
+          "phoneme_label": "t",
+          "ipa_label": "t",
+          "start_ms": 943.9199829101562,
+          "end_ms": 977.0399780273438,
+          "confidence": 0.9726110100746155,
+          "is_estimated": false,
+          "target_seq_idx": 8,
+          "index": 8
+        },
+        {
+          "phoneme_id": 8,
+          "phoneme_label": "ə",
+          "ipa_label": "ə",
+          "start_ms": 1043.280029296875,
+          "end_ms": 1059.8399658203125,
+          "confidence": 0.0049965581856667995,
+          "is_estimated": false,
+          "target_seq_idx": 9,
+          "index": 9
+        },
+        {
+          "phoneme_id": 31,
+          "phoneme_label": "d",
+          "ipa_label": "d",
+          "start_ms": 1092.9599609375,
+          "end_ms": 1159.199951171875,
+          "confidence": 0.5010595917701721,
+          "is_estimated": false,
+          "target_seq_idx": 10,
+          "index": 10
+        },
+        {
+          "phoneme_id": 24,
+          "phoneme_label": "eɪ",
+          "ipa_label": "eɪ",
+          "start_ms": 1192.3199462890625,
+          "end_ms": 1208.8800048828125,
+          "confidence": 0.9550137519836426,
+          "is_estimated": false,
+          "target_seq_idx": 11,
+          "index": 11
+        }
+      ],
+      "words_ts": [
+        {
+          "word": "hello",
+          "start_ms": 99.35999298095703,
+          "end_ms": 364.3199768066406,
+          "confidence": 0.578492008819012,
+          "ph66": [
+            50,
+            8,
+            56,
+            26
+          ],
+          "ipa": [
+            "h",
+            "ə",
+            "l",
+            "oʊ"
+          ]
+        },
+        {
+          "word": "world",
+          "start_ms": 596.1599731445312,
+          "end_ms": 894.239990234375,
+          "confidence": 0.5140109298372408,
+          "ph66": [
+            61,
+            10,
+            56,
+            31
+          ],
+          "ipa": [
+            "w",
+            "ɜː",
+            "l",
+            "d"
+          ]
+        },
+        {
+          "word": "today",
+          "start_ms": 943.9199829101562,
+          "end_ms": 1208.8800048828125,
+          "confidence": 0.6084202280035242,
+          "ph66": [
+            30,
+            8,
+            31,
+            24
+          ],
+          "ipa": [
+            "t",
+            "ə",
+            "d",
+            "eɪ"
+          ]
+        }
+      ]
+    }
+  ]
+}
