@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Upstream third-party checkout (strob/gentle), with its own git history and a Kaldi
+# submodule. Clone it per the README rather than vendoring it here.
+gentle/
+
+# Downloaded assets (a stray copy of the wav2vec2 tutorial sample landed here)
+data/
+
+# The root .gitignore blanket-ignores results/; the alignment output belongs in the repo.
+!results/

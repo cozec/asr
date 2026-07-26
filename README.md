@@ -12,6 +12,7 @@ live in [`data/`](data/) so models don't duplicate tens of gigabytes.
 | [`wav2vec2_asr/`](wav2vec2_asr/) | [wav2vec 2.0](https://arxiv.org/abs/2006.11477) (Baevski et al., NeurIPS 2020) — via torchaudio's pipeline tutorial | Tutorial reproduced exactly; decoder and labeled-data studies — best 1.64% WER, 10 tests passing |
 | [`wav2vec2_fine_tune/`](wav2vec2_fine_tune/) | [HF blog: Fine-Tune Wav2Vec2 for English ASR](https://huggingface.co/blog/fine-tune-wav2vec2-english) + TIMIT phoneme recognition | Step 1 trained — **WER 0.2869** on TIMIT core test; step 2 pipeline complete but untrained |
 | [`wave2vec2_forced_alignment/`](wave2vec2_forced_alignment/) | [torchaudio: Forced Alignment with Wav2Vec2](https://docs.pytorch.org/audio/stable/tutorials/forced_alignment_tutorial.html) | Tutorial reproduced exactly — matching frame indices and scores on all 9 words, 5 figures |
+| [`basic_force_alignment/`](basic_force_alignment/) | [Gentle](https://github.com/strob/gentle) — Kaldi-based forced aligner | Demo run on a 96 s recording — 101/105 words aligned, word + phone timings, 3 figures |
 
 ## Shared data
 
