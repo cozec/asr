@@ -18,14 +18,27 @@ python src/finetune.py --task phoneme  --epochs 30    # step 2
 
 ## One trunk, two heads
 
-![wav2vec2 TIMIT fine-tuning: TIMIT .WAV audio feeds a frozen 7-layer convolutional feature encoder then 12 fine-tuned transformer layers; that shared trunk splits into two CTC heads, one projecting 768 to 30 character tokens scored by WER, the other 768 to 41 phone tokens scored by PER. The .TXT orthographic transcripts supervise the first head; the .PHN phonetic transcripts, folded from 61 to 39 phones, supervise the second.](diagrams/wav2vec2-timit-two-heads.png)
+![wav2vec2 TIMIT fine-tuning: TIMIT .WAV audio feeds a frozen 7-layer convolutional feature encoder, then 12 fine-tuned transformer layers, then dropout. That shared trunk splits into two freshly initialized linear heads, drawn with dashed borders: one projecting 768 to 30 character tokens with 23,070 parameters, scored by WER; the other 768 to 41 phone tokens with 31,529 parameters, scored by PER. The .TXT orthographic transcripts supervise the first head; the .PHN phonetic transcripts, folded from 61 to 39 phones, supervise the second.](diagrams/wav2vec2-timit-two-heads.png)
 
-The same pretrained checkpoint and the same 3696 training utterances feed both tasks. The
-convolutional feature encoder stays **frozen** (the blog's `freeze_feature_encoder()`), so
-only the 90M-parameter transformer and a small CTC head are trained. What changes between
-the two steps is a single projection — **768 → 30** character tokens versus **768 → 41**
-phone tokens — plus where the supervision comes from: `.TXT` for step 1, `.PHN` folded
-61 → 39 for step 2.
+Three kinds of parameter, and the borders distinguish them:
+
+| | params | state |
+|---|---|---|
+| conv feature encoder | 4.2M | pretrained, **frozen** by `freeze_feature_encoder()` |
+| 12 transformer layers | 89.8M | pretrained, **fine-tuned** |
+| linear head (dashed) | 23K / 31.5K | **fresh** — random init, no pretrained weights exist |
+
+**The head does not come from the checkpoint.** `facebook/wav2vec2-base` was pretrained
+with no output vocabulary at all, so loading it prints `lm_head.weight | MISSING` and
+transformers creates `nn.Linear(768, vocab_size)` from scratch — sampled from
+`N(0, 0.02)`, matching `config.initializer_range`. That is the *only* structural
+difference between the two steps: **768 → 30** characters versus **768 → 41** phones.
+
+It also explains the long WER = 1.00 plateau early in training. The head starts as noise
+over the vocabulary, so the model emits blanks until those 23K new parameters learn the
+inventory *while* the 90.2M below them reshape to make it linearly separable. Warmup
+exists to stop a high early learning rate from wrecking the pretrained trunk to satisfy a
+random head.
 
 Sources: [`diagrams/`](diagrams/) holds the mermaid `.mmd`, an editable `.excalidraw`
 scene, and rendered `.svg` / `.png`.
