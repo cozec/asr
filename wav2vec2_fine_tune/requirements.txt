@@ -1,0 +1,9 @@
+# Verified on Apple Silicon (M5, Python 3.11).
+torch==2.13.0
+torchaudio==2.11.0
+transformers==5.14.1     # blog targets 4.x; see README "Adaptations"
+datasets==5.0.0
+accelerate==1.14.0
+soundfile==0.14.0        # reads TIMIT's NIST SPHERE audio
+jiwer==4.0.0             # WER / PER (datasets.load_metric was removed)
+numpy==2.4.6

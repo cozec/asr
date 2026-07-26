@@ -10,6 +10,7 @@ live in [`data/`](data/) so models don't duplicate tens of gigabytes.
 | [`conformer/`](conformer/) | [Conformer: Convolution-augmented Transformer for Speech Recognition](https://arxiv.org/abs/2005.08100) (Gulati et al., INTERSPEECH 2020) | Implemented — encoder + CTC/RNN-T heads, S/M/L configs, 15 tests passing |
 | [`rnnt/`](rnnt/) | [Streaming End-to-end Speech Recognition For Mobile Devices](https://arxiv.org/abs/1811.06621) (He et al., ICASSP 2019) | Implemented + **live streaming demo** — 5.99% WER at RTF 0.138, 18 tests passing |
 | [`wav2vec2_asr/`](wav2vec2_asr/) | [wav2vec 2.0](https://arxiv.org/abs/2006.11477) (Baevski et al., NeurIPS 2020) — via torchaudio's pipeline tutorial | Tutorial reproduced exactly; decoder and labeled-data studies — best 1.64% WER, 10 tests passing |
+| [`wav2vec2_fine_tune/`](wav2vec2_fine_tune/) | [HF blog: Fine-Tune Wav2Vec2 for English ASR](https://huggingface.co/blog/fine-tune-wav2vec2-english) + TIMIT phoneme recognition | Pipeline built and smoke-tested; 30-epoch runs in progress |
 
 ## Shared data
 
