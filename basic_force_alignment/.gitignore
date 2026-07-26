@@ -7,8 +7,9 @@ __pycache__/
 # submodule. Clone it per the README rather than vendoring it here.
 gentle/
 
-# Downloaded assets (a stray copy of the wav2vec2 tutorial sample landed here)
-data/
+# A stray copy of the wav2vec2 tutorial sample landed here; demo_audio.* is our input
+# and stays tracked so the second example is reproducible.
+data/Lab41-*.wav
 
 # The root .gitignore blanket-ignores results/; the alignment output belongs in the repo.
 !results/

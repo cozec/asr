@@ -64,6 +64,43 @@ Coverage is even across the whole recording rather than degrading over time, whi
 what you want from a lenient aligner on a long file. The duration histogram peaks around
 0.15 s with a median of **0.28 s** and a tail to 1.7 s — Lucier's drawn-out delivery.
 
+## Second example: head-to-head with the CTC aligner
+
+`data/demo_audio.wav` is the gTTS clip "hello world today" that
+[`../wave2vec2_forced_alignment/`](../wave2vec2_forced_alignment/) aligns with a CTC
+trellis over wav2vec2 emissions. Running both on the *same* audio makes the two
+approaches directly comparable.
+
+```bash
+cd gentle && python3 align.py ../data/demo_audio.wav ../data/demo_audio.txt \
+    -o ../results/demo_audio_alignment.json
+cd .. && .venv/bin/python plot_alignment.py \
+    --json results/demo_audio_alignment.json --audio data/demo_audio.wav --tag demo_
+```
+
+| word | Gentle (Kaldi) | wav2vec2 (CTC) | Δ start | Δ end |
+|---|---|---|---|---|
+| hello | 0.08 – 0.53 | 0.02 – 0.40 | 0.06 | 0.13 |
+| world | 0.53 – 0.90 | 0.55 – 0.87 | **0.02** | **0.03** |
+| today | 0.93 – 1.50 | 0.95 – 1.33 | **0.02** | 0.17 |
+
+Two independent aligners — a Kaldi HMM chain with a pronunciation lexicon, and a CTC
+lattice over a self-supervised transformer — agree on **word starts within 60 ms**, and
+on "world" within 30 ms at both ends. That agreement is the strongest available evidence
+that both are right, since they share no components.
+
+Ends diverge more than starts (up to 170 ms). Gentle consistently extends words later:
+it models a phone sequence that must account for the release and trailing voicing, while
+CTC stops as soon as the last character's spike has passed. Neither is wrong; they answer
+slightly different questions about where a word "ends".
+
+![Spectrogram of "hello world today" above a coloured bar strip of phones: hh, eh, l, ow then w, er, l, d then t, uw, d, ey. Phone boundaries coincide with formant transitions.](plots/demo_2_phone_detail.png)
+
+Synthesized speech makes the phone alignment far more legible than the Lucier recording.
+The boundaries land on formant transitions — `ow` covers the falling formant that closes
+"hello", `er` covers the rising F2 in "world" — and all 3 words aligned with none
+rejected.
+
 ## Getting Gentle to run
 
 The demo needs `ext/k3` and `ext/m3`, compiled Kaldi binaries that the repo does not

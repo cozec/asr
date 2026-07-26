@@ -34,8 +34,15 @@ def save(fig, name):
     print(f"  wrote plots/{name}")
 
 
-def plot_words_over_spectrogram(result, audio, sample_rate, t0=6.0, t1=26.0):
-    """Word boundaries over the spectrogram -- the check that alignment is real."""
+def plot_words_over_spectrogram(result, audio, sample_rate, tag="", t0=None, t1=None):
+    """Word boundaries over the spectrogram -- the check that alignment is real.
+
+    The window defaults to the whole file for short clips, and to a readable 20s slice
+    for long ones where every word would otherwise be a sliver.
+    """
+    duration = len(audio) / sample_rate
+    if t0 is None:
+        t0, t1 = (0.0, duration) if duration <= 30 else (6.0, 26.0)
     words = [w for w in result["words"]
              if w["case"] == "success" and w["end"] > t0 and w["start"] < t1]
 
@@ -60,10 +67,10 @@ def plot_words_over_spectrogram(result, audio, sample_rate, t0=6.0, t1=26.0):
     ax2.set_ylim(0, sample_rate * 0.4)
     ax2.set_xlabel("time [second]")
     ax2.set_ylabel("frequency [Hz]")
-    save(fig, "1_words_over_spectrogram.png")
+    save(fig, f"{tag}1_words_over_spectrogram.png")
 
 
-def plot_phone_detail(result, audio, sample_rate, num_words=6):
+def plot_phone_detail(result, audio, sample_rate, tag="", num_words=6):
     """Phone-level timings -- what Gentle gives beyond word boundaries.
 
     Six words covers "I am sitting in a room" and stops before the 3s pause that
@@ -101,10 +108,10 @@ def plot_phone_detail(result, audio, sample_rate, num_words=6):
     ax2.set_yticks([])
     ax2.set_xlabel("time [second]")
     ax2.set_ylabel("phones")
-    save(fig, "2_phone_detail.png")
+    save(fig, f"{tag}2_phone_detail.png")
 
 
-def plot_coverage(result, audio, sample_rate):
+def plot_coverage(result, audio, sample_rate, tag=""):
     """Which words landed, which did not, across the whole recording."""
     words = result["words"]
     ok = [w for w in words if w["case"] == "success"]
@@ -136,7 +143,7 @@ def plot_coverage(result, audio, sample_rate):
     ax2.set_title("Aligned word durations")
 
     fig.tight_layout()
-    save(fig, "3_coverage.png")
+    save(fig, f"{tag}3_coverage.png")
 
     return ok, bad
 
@@ -145,6 +152,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", default=os.path.join(ROOT, "gentle/examples/lucier_alignment.json"))
     parser.add_argument("--audio", default=os.path.join(ROOT, "gentle/examples/data/lucier.mp3"))
+    parser.add_argument("--tag", default="", help="prefix for output filenames")
     args = parser.parse_args()
 
     result, audio, sample_rate = load(args.json, args.audio)
@@ -152,9 +160,9 @@ def main():
     print(f"words : {len(result['words'])}\n")
 
     print("figures:")
-    plot_words_over_spectrogram(result, audio, sample_rate)
-    plot_phone_detail(result, audio, sample_rate)
-    ok, bad = plot_coverage(result, audio, sample_rate)
+    plot_words_over_spectrogram(result, audio, sample_rate, args.tag)
+    plot_phone_detail(result, audio, sample_rate, args.tag)
+    ok, bad = plot_coverage(result, audio, sample_rate, args.tag)
 
     print(f"\naligned  : {len(ok)}/{len(result['words'])}")
     print(f"span     : {ok[0]['start']:.2f}s - {ok[-1]['end']:.2f}s")
