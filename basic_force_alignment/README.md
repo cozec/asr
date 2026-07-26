@@ -1,9 +1,47 @@
 # Forced Alignment: Gentle, MFA, and BFA
 
-[Gentle](https://github.com/strob/gentle) is a forced aligner built on **Kaldi** — a
-classical HMM/GMM+DNN pipeline with a pronunciation lexicon. It is the counterpart to
-[`../wave2vec2_forced_alignment/`](../wave2vec2_forced_alignment/), which does the same
-job with a CTC lattice over wav2vec2 emissions. Same task, two eras of technology.
+Forced alignment answers a different question from ASR: given audio **and** its
+transcript, *when was each word spoken?* Nothing is being recognized — the job is to find
+the most likely time-alignment between known words and the audio.
+
+Three aligners are set up here, and a fourth sits next door for comparison.
+
+### [Gentle](https://github.com/strob/gentle)
+
+A **Kaldi** HMM chain wrapped in a friendly CLI and REST API, by Robert Ochshorn. Its
+selling point is being *lenient* — it aligns what it can and marks the rest
+`not-found-in-audio` rather than forcing a fit, which is what you want when a transcript
+and a recording disagree. Ships a Python CLI and a browser UI; needs compiled Kaldi
+binaries and ~250 MB of models. Last released 2023.
+
+### [MFA — Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/)
+
+The **research standard**, from McAuliffe et al. (Interspeech 2017). Also a Kaldi HMM
+chain, but with a much larger ecosystem: pretrained acoustic models and pronunciation
+dictionaries for dozens of languages, plus the ability to train your own on a new corpus.
+Actively maintained (3.4.1), conda-only, and outputs Praat TextGrids. If a paper says
+"we force-aligned the data", this is usually what it used.
+
+### [BFA — Bournemouth Forced Aligner](https://github.com/tabahi/bournemouth-forced-aligner)
+
+The **new neural entrant** ([arXiv:2509.23147](https://arxiv.org/abs/2509.23147), 2025). No
+Kaldi and no pronunciation dictionary: a CUPE phoneme encoder with a CTC decoder,
+phonemising text through espeak-ng, so it covers any language espeak supports. It models
+inter-phoneme gaps and silences explicitly, and claims up to 240× faster than MFA. A
+plain `pip install`.
+
+### [wav2vec2 CTC](../wave2vec2_forced_alignment/) *(next door)*
+
+torchaudio's tutorial aligner — a CTC trellis over wav2vec2 character emissions, no
+lexicon and no phones. Included in the [four-way comparison](#four-aligners-one-clip)
+below.
+
+|  | engine | units | install | maintained |
+|---|---|---|---|---|
+| Gentle | Kaldi HMM | phones, lexicon | binaries + models | 2023 |
+| MFA | Kaldi HMM | phones, lexicon | conda | active |
+| BFA | CUPE + CTC | IPA, via espeak-ng | pip | active (2025) |
+| wav2vec2 | CTC | characters | pip | active |
 
 ```bash
 cd gentle && python3 align.py examples/data/lucier.mp3 examples/data/lucier.txt \
