@@ -7,6 +7,24 @@ buys over greedy decoding, and how the model degrades as labeled data shrinks.
 
 Model: **[wav2vec 2.0](https://arxiv.org/abs/2006.11477)** (Baevski et al., NeurIPS 2020).
 
+## Architecture
+
+![wav2vec 2.0 architecture: raw 16 kHz waveform into a 7-layer convolutional feature encoder (320x stride, 20 ms hop, 25 ms receptive field), a 512-to-768 feature projection, 12 transformer layers with 12 heads, then a linear CTC head to 29 character labels at 50 frames/s, decoded by greedy or beam CTC.](plots/wav2vec2_asr_base_960h_architecture.png)
+
+```bash
+python src/plot_model.py                              # or --bundle WAV2VEC2_ASR_LARGE_960H
+```
+
+Every number in that figure is **introspected from the loaded checkpoint**, not written
+by hand — layer shapes, strides, parameter counts, and the derived 320× downsampling and
+400-sample (25 ms) receptive field, which the script cross-checks against a real forward
+pass. So the diagram cannot drift from the model it describes.
+
+The split down the left is the part that matters: the 94.4M-parameter stack below the
+CTC head is **pretrained on unlabeled audio**, and only the 22K-parameter head is added
+at fine-tuning. That is why the three bundles compared [below](#labeled-data-efficiency)
+have identical parameter counts.
+
 ## The tutorial, reproduced
 
 ```bash
@@ -96,6 +114,7 @@ labeled data buys is spelling. That is the paper's thesis made visible.
 
 ```
 src/pipeline_demo.py       the tutorial, end to end, with plots
+src/plot_model.py          architecture diagram, introspected from the checkpoint
 src/decoder.py             GreedyCTCDecoder (tutorial) + '|' -> space
 scripts/evaluate.py        WER/RTF on LibriSpeech; compares bundles
 scripts/compare_decoders.py  greedy vs beam vs beam+LM
