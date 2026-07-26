@@ -35,52 +35,60 @@ class Segment:
         return self.end - self.start
 
 def get_trellis(emission, tokens, blank_id=0):
-    """Generate alignment trellis matrix"""
+    """Generate alignment trellis matrix.
+
+    Two transitions are allowed per frame: stay on the current token, which emits a
+    blank, or advance to the next token, which emits that token. Each branch must be
+    scored with the emission it actually produces. Scoring "stay" with the token's own
+    probability makes the max degenerate into picking the better predecessor, models no
+    blanks at all, and leaves backtrack recovering a path this trellis never scored.
+    """
     num_frame = emission.size(0)
     num_tokens = len(tokens)
 
     # Initialize trellis with infinity
     trellis = torch.full((num_frame, num_tokens), -float("inf"))
     trellis[0, 0] = emission[0, tokens[0]]
-    
+
     for t in range(1, num_frame):
-        trellis[t, 0] = trellis[t-1, 0] + emission[t, tokens[0]]
+        trellis[t, 0] = trellis[t-1, 0] + emission[t, blank_id]
         for j in range(1, num_tokens):
             trellis[t, j] = torch.max(
-                trellis[t-1, j] + emission[t, tokens[j]],
-                trellis[t-1, j-1] + emission[t, tokens[j]]
+                trellis[t-1, j] + emission[t, blank_id],        # stay -> emit blank
+                trellis[t-1, j-1] + emission[t, tokens[j]]      # advance -> emit token
             )
-    
+
     return trellis
 
 def backtrack(trellis, emission, tokens, blank_id=0):
-    """Backtrack to find the optimal path"""
+    """Backtrack to find the optimal path.
+
+    Scores the two transitions exactly as get_trellis did, so the recovered path is the
+    Viterbi path of that trellis. The loop guards on t > 0 because emission[t-1] at t=0
+    silently wraps to the *last* frame -- a wrong value rather than an error.
+    """
     t, j = trellis.size(0) - 1, trellis.size(1) - 1
-    path = []
-    
-    while j >= 0 and t >= 0:
-        # Score for staying at the same token
+    path = [Point(j, t, emission[t, blank_id].exp().item())]
+
+    while j > 0 and t > 0:
+        # Score for staying at the same token (emits a blank)
         stay = emission[t-1, blank_id]
-        # Score for changing to the next token
+        # Score for changing to the next token (emits the token)
         change = emission[t-1, tokens[j]]
-        
-        # Update position
-        if j == 0:
-            prob = stay.exp().item()
-            path.append(Point(j, t, prob))
-            t -= 1
-        else:
-            # Compare scores
-            stayed = trellis[t-1, j] + stay
-            changed = trellis[t-1, j-1] + change
-            
-            prob = (change if changed > stayed else stay).exp().item()
-            path.append(Point(j, t, prob))
-            
-            t -= 1
-            if changed > stayed:
-                j -= 1
-    
+
+        stayed = trellis[t-1, j] + stay
+        changed = trellis[t-1, j-1] + change
+
+        t -= 1
+        if changed > stayed:
+            j -= 1
+        path.append(Point(j, t, (change if changed > stayed else stay).exp().item()))
+
+    # Any frames left over belong to the first token, held across leading silence.
+    while t > 0:
+        t -= 1
+        path.append(Point(j, t, emission[t, blank_id].exp().item()))
+
     return path[::-1]
 
 def merge_repeats(path, transcript):
@@ -178,50 +186,54 @@ def visualize_alignments(trellis, segments, word_segments, waveform, sample_rate
     plt.tight_layout()
     plt.show()
 
-def generate_demo_audio(text, output_path="demo_audio.wav"):
-    """Generate audio file from text using gTTS"""
+def generate_demo_audio(text, output_path="demo_audio.wav", target_rate=16000):
+    """Generate audio from text with gTTS, resampled to the model's rate.
+
+    gTTS emits 24 kHz MP3 and wav2vec2 expects 16 kHz. Nothing downstream resamples, so
+    skipping this feeds the model audio at the wrong rate: "HELLO" decodes as "HOW LOW",
+    and every frame index lands on a ~74 fps time base instead of 50 fps. Forced
+    alignment still returns segments, with even higher confidence, so it fails silently.
+    """
     # Remove separator characters for speech generation
     clean_text = text.replace("|", " ").strip()
-    
-    # Generate audio file
+
+    # gTTS writes MP3 regardless of the extension, so name it honestly.
+    mp3_path = os.path.splitext(output_path)[0] + ".mp3"
     tts = gTTS(text=clean_text, lang='en', slow=False)
-    tts.save(output_path)
-    
-    # Convert to wav using torchaudio (gTTS saves as mp3)
-    waveform, sample_rate = torchaudio.load(output_path)
-    torchaudio.save(output_path, waveform, sample_rate)
-    
+    tts.save(mp3_path)
+
+    waveform, sample_rate = torchaudio.load(mp3_path)
+    if sample_rate != target_rate:
+        waveform = torchaudio.functional.resample(waveform, sample_rate, target_rate)
+    torchaudio.save(output_path, waveform, target_rate)
+
     return output_path
 
 def main():
     print(f"Forced Alignment Demo v{__version__}")
-    try:
-        # Try soundfile backend first
-        torchaudio.set_audio_backend("soundfile")
-    except:
-        try:
-            # Try sox backend as fallback
-            torchaudio.set_audio_backend("sox")
-        except:
-            print("Please install required dependencies:")
-            print("pip install soundfile sox")
-            return
+    # torchaudio.set_audio_backend() was removed in torchaudio 2.1; the backend is
+    # selected automatically now. The old call raised AttributeError, which the bare
+    # except turned into a bogus "install soundfile sox" message on a fully working
+    # install, and returned before doing any work.
 
     try:
         # Prepare transcript (3 words)
         transcript = "|HELLO|WORLD|TODAY|"
-        
-        # Generate demo audio
-        print("Generating demo audio...")
-        audio_path = generate_demo_audio(transcript)
-        
-        # Load audio
-        waveform, sample_rate = torchaudio.load(audio_path)
-        
-        # Load model and get emissions
+
+        # Load model first: the audio has to be generated at the rate it expects.
         bundle = torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H
         model = bundle.get_model()
-        
+
+        # Generate demo audio
+        print("Generating demo audio...")
+        audio_path = generate_demo_audio(transcript, target_rate=bundle.sample_rate)
+
+        # Load audio
+        waveform, sample_rate = torchaudio.load(audio_path)
+        if sample_rate != bundle.sample_rate:
+            waveform = torchaudio.functional.resample(waveform, sample_rate, bundle.sample_rate)
+            sample_rate = bundle.sample_rate
+
         # Move model to available device
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
@@ -255,16 +267,20 @@ def main():
         visualize_trellis_with_path(trellis, path)
         visualize_alignments(trellis, segments, word_segments, waveform, sample_rate)
         
-        # Print results
+        # Print results. Raw frame indices mean little on their own, so convert them
+        # back to seconds using the audio-to-frame ratio the model actually produced.
+        ratio = waveform.size(1) / trellis.size(0) / sample_rate
         print("\nAlignment Results:")
         print("=================")
         for word in word_segments:
-            print(word)
-    
+            print(f"{word}  ->  {word.start * ratio:5.2f}s - {word.end * ratio:5.2f}s")
+
     except Exception as e:
-        print(f"Error occurred: {e}")
-        print("\nPlease install required dependencies:")
-        print("pip install soundfile sox gtts")
+        # Show the real failure instead of guessing at a cause. The old handler
+        # blamed missing packages for every error, which was wrong and misleading.
+        import traceback
+        print(f"Error occurred: {type(e).__name__}: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main() 
