@@ -68,35 +68,34 @@ model's behaviour legible:
 ## Beam search vs. greedy decoding
 
 The tutorial decodes greedily — "simply pick up the best hypothesis at each time step."
-This measures what the alternatives cost and gain (first 50 utterances of test-clean
-— see the caveat below):
+This measures what the alternatives cost and gain (**full** test-clean, 2620 utterances):
 
 | decoder | lexicon | LM | WER% | decode time | vs greedy |
 |---|---|---|---|---|---|
-| greedy | – | – | 2.15 | 0.01 s | 1× |
-| beam 5 | no | no | **2.15** | 0.10 s | 8× |
-| beam 50 | no | no | **2.15** | 1.07 s | 87× |
-| beam 5 | yes | 4-gram | 2.46 | 0.10 s | 8× |
-| beam 50 | yes | 4-gram | **1.64** | 0.88 s | 72× |
+| greedy | – | – | 3.40 | 0.7 s | 1× |
+| beam 50 | no | no | **3.40** | 57.0 s | 88× |
+| beam 50 | yes | 4-gram | **2.97** | 47.9 s | 74× |
 
 ```bash
-python scripts/compare_decoders.py --num 50 --with-lm
+python scripts/compare_decoders.py --num 100000 --with-lm
 ```
+
+Full test-clean, all 2620 utterances.
 
 Three things worth taking from this:
 
-**Beam search on its own does nothing here.** Identical WER at beam 5 and beam 50, for up
-to 87× the decode cost. That is not a bug — CTC assumes outputs are conditionally
+**Beam search on its own does nothing here.** Identical WER to greedy — 3.40 vs 3.40,
+not merely close — for 88× the decode cost. That is not a bug — CTC assumes outputs are conditionally
 independent given the audio, so with no external knowledge the per-frame argmax path
 already *is* the best path. Widening the search re-ranks the same acoustic scores.
 
 **The gain comes from the language model, not the search.** Adding a lexicon and 4-gram
-LM at beam 50 takes 2.15% → **1.64%**, a 24% relative improvement.
+LM at beam 50 takes 3.40% → **2.97%**, a 13% relative improvement.
 
-**A narrow beam plus an LM is worse than no beam at all** (2.46% vs 2.15%). The LM
-reorders hypotheses, so the beam has to be wide enough to still be holding the one the LM
-will eventually prefer. Beam width and LM are a package; adding the LM alone is a
-regression.
+**Beam width and the LM are a package.** On a smaller sample, beam 5 *with* the LM scored
+worse than plain greedy (2.46% vs 2.15%): the LM reorders hypotheses, so a narrow beam
+prunes away the one the LM would have promoted. Adding an LM without widening the beam
+can be a regression.
 
 ### How prefix beam search actually unrolls
 
@@ -128,18 +127,20 @@ finds nothing new unless an LM is there to re-score the merged results.
 wav2vec2's actual claim is about labeled data, not architecture. These three bundles are
 the *same* 94M-parameter model with the *same* self-supervised pretraining on 960 h of
 unlabeled LibriSpeech — they differ only in how much **labeled** data fine-tuned them
-(first 30 utterances of test-clean, greedy decoding — see the caveat below):
+(**full** test-clean, 2620 utterances, greedy decoding):
 
 | labeled data | params | WER% | RTF |
 |---|---|---|---|
-| 10 minutes | 94M | 44.41 | 0.014 |
-| 100 hours | 94M | 6.06 | 0.013 |
-| 960 hours | 94M | **2.33** | 0.013 |
+| 10 minutes | 94M | 47.04 | 0.014 |
+| 100 hours | 94M | 6.08 | 0.014 |
+| 960 hours | 94M | **3.40** | 0.013 |
 
 ```bash
-python scripts/evaluate.py --num 30 \
+python scripts/evaluate.py --num 100000 \
     --bundles WAV2VEC2_ASR_BASE_10M WAV2VEC2_ASR_BASE_100H WAV2VEC2_ASR_BASE_960H
 ```
+
+Full test-clean, all 2620 utterances, greedy decoding, no LM.
 
 The failure mode is more informative than the number. With 10 minutes of labels:
 
@@ -154,15 +155,29 @@ ref   : HE HOPED THERE WOULD BE STEW FOR DINNER TURNIPS AND CARROTS AND BRUISED 
 wrong*. The self-supervised representation has already learned the sounds; what the
 labeled data buys is spelling. That is the paper's thesis made visible.
 
-## Caveat on the WER numbers above
+## On the evaluation set
 
-They come from LibriSpeech **test-clean**, but only the **first N utterances in sorted
-order** — which all belong to a single speaker (`1089`), 4–6 minutes of audio out of
-test-clean's 2620 utterances / 5.4 hours. That is enough to show the *direction* of each
-effect, but it is not a trustworthy absolute WER: one speaker, one recording condition.
+All numbers above are the **full LibriSpeech test-clean**: 2620 utterances, 5.4 hours,
+40 speakers. Neither table is subsampled.
 
-A full-test-clean run is in progress and these tables will be replaced with it. Reproduce
-with `--num 100000` (any number ≥ 2620) on either script.
+An earlier revision of this README reported numbers from the first 30-50 utterances in
+sorted order, which turn out to all belong to a single speaker (`1089`). That sample was
+optimistic, and unevenly so:
+
+| labeled | first 30 (1 speaker) | full 2620 |
+|---|---|---|
+| 10 min | 44.41% | 47.04% |
+| 100 h | 6.06% | 6.08% |
+| 960 h | 2.33% | **3.40%** |
+
+The best model looked 31% better than it is, while the 100 h model barely moved — so the
+bias was not even a constant offset. Worth remembering before trusting any small-sample
+WER, including one's own.
+
+These are greedy, no-LM numbers and so are **not** directly comparable to the wav2vec 2.0
+paper's Tables 1 and 2, which report LM-decoded results throughout (BASE/LS-960 with a
+Transformer LM: 2.1 on test-clean). The paper's no-LM figures are in Appendix C, which is
+not in the NeurIPS camera-ready PDF.
 
 ## Layout
 
