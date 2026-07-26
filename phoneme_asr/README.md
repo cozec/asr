@@ -42,7 +42,7 @@ words, and out-of-vocabulary words need that lexicon extended.
 |---|---|---|
 | **[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)** | 13.8k★, active | The strongest option. ONNX Runtime, streaming transducers, ships for Android/iOS/RPi/embedded Linux, and has a broad pretrained zoo. From the k2/icefall lineage. |
 | **[vosk-api](https://github.com/alphacep/vosk-api)** | 15.0k★, active | Kaldi-based offline recognition with ~50 MB per-language models. Mature bindings for Android, iOS, Raspberry Pi. |
-| **[moonshine](https://github.com/moonshine-ai/moonshine)** | 10.5k★, very active | 27M-param ASR aimed squarely at edge; the *Flavors of Moonshine* paper ([arXiv:2509.02523](https://arxiv.org/pdf/2509.02523)) reports tiny specialized models matching Whisper Medium (28× larger) on 6 languages. **Character/word output, not phonemes** — relevant as the size bar to beat. |
+| **[moonshine](https://github.com/moonshine-ai/moonshine)** | 10.5k★, active daily; **108 MB fp32 / ~27 MB int8** *(measured)* | Edge-first ASR, MIT weights. *Flavors of Moonshine* ([arXiv:2509.02523](https://arxiv.org/pdf/2509.02523)) reports tiny specialized models matching Whisper Medium, 28× larger, on 6 languages. **Subword output (`vocab_size: 32768`), not phonemes** — so it sets the size bar rather than providing a PER. Best candidate to adapt: see [below](#the-concrete-candidate-a-phoneme-head-on-moonshines-encoder). |
 | **[PocketSphinx](https://github.com/cmusphinx/pocketsphinx)** | 4.3k★, active | The classic embedded recognizer, phoneme/HMM-based, runs on hardware nothing else will. Pre-neural accuracy. |
 | **[icefall](https://github.com/k2-fsa/icefall)** | 1.5k★, active | Training recipes (Zipformer, pruned RNN-T) that feed sherpa-onnx. Where you would train a custom phoneme transducer. |
 | **[ExecuTorch](https://github.com/pytorch/executorch)** | 4.8k★, active | PyTorch's on-device runtime — the deployment path if the model is authored in PyTorch. |
@@ -55,14 +55,18 @@ other projects in this repo:
 | | size | on-device? |
 |---|---|---|
 | Tiny Transducer (paper) | **0.9M params** | microcontroller |
+| moonshine-tiny | 108 MB fp32 / **~27 MB int8** | phone, comfortably |
 | CUPE | 30.1M / 115 MB fp32 / **~29 MB int8** | phone, comfortably |
+| moonshine-base | 246 MB fp32 / ~62 MB int8 | phone |
 | Vosk per-language model | ~50 MB | phone |
 | Gentle's Kaldi models | 191 MB | borderline |
 | wav2vec2-base ASR | 360 MB | no, without compression |
 | MFA conda environment | 1.3 GB | no |
 
 The jump from CUPE to wav2vec2-base is **12×** for the same task family. That gap is the
-whole design space of this project.
+whole design space of this project. Note that moonshine-tiny and CUPE land in the same
+place — ~27 vs ~29 MB int8 — but only one of them emits phones, which is the whole point
+of [the adaptation below](#the-concrete-candidate-a-phoneme-head-on-moonshines-encoder).
 
 ## Benchmarks
 
@@ -165,6 +169,37 @@ joined them.
 **No edge benchmark.** The *accuracy* ladder is well established (see
 [Benchmarks](#benchmarks) above) — what is missing is the size and latency axis measured
 like-for-like, on one machine with one phone set.
+
+### The concrete candidate: a phoneme head on Moonshine's encoder
+
+[Moonshine](https://github.com/moonshine-ai/moonshine) is the best-positioned base for
+closing the first gap, because it is the only project in this survey that is
+simultaneously small, current, and licensed for reuse.
+
+| | |
+|---|---|
+| size | **108 MB fp32 / ~27 MB int8** (tiny), 246 MB / ~62 MB (base) *(measured)* |
+| architecture | 6 encoder + 6 decoder layers, hidden 288 |
+| activity | 10.5k★, pushed the day of this survey, 196k downloads on tiny |
+| licence | **MIT** on the weights — reuse is clean |
+| paper | [arXiv:2410.15608](https://arxiv.org/abs/2410.15608) |
+
+Its actual innovation is variable-length input: Whisper pads every clip to 30 s, Moonshine
+does not, which is where most of the latency win on short utterances comes from. That
+property matters more for edge than parameter count does.
+
+**But it is not a phoneme model.** `vocab_size: 32768` — a subword vocabulary, so it emits
+text and a WER, and nothing it produces lands on the TIMIT ladder.
+
+The build is therefore: **keep the encoder, replace the 32k-token decoder with a phoneme
+CTC head.** That is the same surgery as `wav2vec2_fine_tune` step 2 — a fresh
+`nn.Linear(hidden, num_phones)` on a pretrained trunk — against a trunk that is 4× smaller
+and already has a streaming edge runtime behind it. Moonshine-tiny's encoder at ~27 MB
+int8 lands where CUPE does, but with maintenance and an ONNX path that CUPE lacks.
+
+Sequencing matters: this is only worth doing *after* there is a TIMIT PER from the
+existing pipeline, because without a baseline number there is nothing to say whether the
+smaller trunk cost accuracy or not.
 
 ## Where this connects to the rest of the repo
 
