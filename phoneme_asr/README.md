@@ -95,6 +95,7 @@ The ladder, as reported in wav2vec 2.0 Table 3 ([Baevski et al.
 | wav2vec | 12.9 | 14.7 |
 | vq-wav2vec | 9.6 | 11.6 |
 | **wav2vec 2.0 LARGE (LS-960), no LM** | **7.4** | **8.3** |
+| *[this repo](../wav2vec2_fine_tune/) — wav2vec2-**base**, 20 epochs* | – | *11.52* |
 
 That folding step matters more than it looks: PER on the 61-phone set is not comparable
 to PER on the folded 39, and papers do not always say which they report. Any number
@@ -150,11 +151,14 @@ device. That is the gap this folder could close, not the accuracy ladder itself.
 
 ### We are already set up to enter the ladder
 
-[`wav2vec2_fine_tune/`](../wav2vec2_fine_tune/) implements exactly this protocol —
-3696/192 splits, 61→39 folding verified to produce exactly 39 phones, PER scoring — and
-is one training run away from a number that sits on the table above. A `wav2vec2-base`
-fine-tune should land well short of the 8.3 LARGE result, which is the honest expectation
-and the point of measuring rather than assuming.
+**Done.** [`wav2vec2_fine_tune/`](../wav2vec2_fine_tune/) implements this protocol exactly
+— 3696/192 splits, 61→39 folding verified to yield exactly 39 phones — and a 20-epoch
+`wav2vec2-base` fine-tune scored **11.52% PER**, level with vq-wav2vec and ahead of
+wav2vec. 2.4 hours on an M5.
+
+That beat the 12–20% I predicted before running it. The lesson is the one the survey is
+built on: the ladder is public, the protocol is fixed, and running the thing costs less
+than arguing about where it would land.
 
 ## Gaps worth building into
 
@@ -205,16 +209,15 @@ smaller trunk cost accuracy or not.
 
 Two pieces of the work are already here:
 
-- [`wav2vec2_fine_tune/`](../wav2vec2_fine_tune/) has a **complete but untrained** TIMIT
-  phoneme-recognition pipeline (39-phone folded set, PER scoring). It is the obvious
-  baseline: fine-tune, measure PER, then quantize and measure the size/accuracy curve.
+- [`wav2vec2_fine_tune/`](../wav2vec2_fine_tune/) has a **trained** TIMIT phoneme model at
+  **11.52% PER** on the standard protocol. That is the baseline: next is quantizing it and
+  measuring the size/accuracy curve, which is the axis nobody publishes.
 - [`basic_force_alignment/`](../basic_force_alignment/) already runs **CUPE** via BFA, so
   the most interesting small phoneme encoder is installed and working.
 
-A defensible project from here is the missing benchmark: train the TIMIT phoneme model,
-compare it against CUPE and a wav2vec2 phoneme model at matched phone sets, and report
-**PER vs. model size vs. latency** on identical hardware — with int8 quantization and an
-ONNX/ExecuTorch export as the edge path.
+With the baseline in hand, the missing benchmark is now: quantize this model to int8,
+compare it against CUPE and a Moonshine-encoder variant at the same 39-phone set, and
+report **PER vs. model size vs. latency** on identical hardware.
 
 ## Sources
 

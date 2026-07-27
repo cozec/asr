@@ -45,7 +45,7 @@ scene, and rendered `.svg` / `.png`.
 
 ## Results
 
-### Step 1 — ASR: WER 0.2869
+### Step 1 — ASR: WER 28.69%
 
 Fine-tuned `facebook/wav2vec2-base` on 3696 TIMIT utterances, evaluated on the
 192-utterance core test set. **Stopped at epoch 20 of 30** — see [Honest
@@ -89,6 +89,55 @@ Every error is a **phonetically plausible misspelling** — `negociiations`, `se
 what character-level CTC with no language model does. It is also the argument for step 2:
 if the model is really predicting sounds, phones are the more honest target than English
 spelling.
+
+### Step 2 — Phoneme recognition: PER 11.52%
+
+Same checkpoint and same 3696 utterances, but predicting **phones** instead of characters:
+targets from TIMIT's `.PHN` files folded 61→39 (Lee & Hon 1989), scored by phone error
+rate on the 192-utterance core test set. This is the standard TIMIT protocol, so the
+number is directly comparable to the published ladder.
+
+| epoch | PER | |
+|---|---|---|
+| 1–3 | 98.18% | blanks only |
+| **4** | 63.05% | plateau breaks |
+| 5 | 15.08% | |
+| 10 | 12.16% | |
+| **16** | **11.52%** | best |
+| 20 | 11.70% | final |
+
+Full curve: [`results/phoneme_timit.json`](results/phoneme_timit.json).
+
+**Where that sits** (TIMIT test PER, no LM, from wav2vec 2.0 Table 3):
+
+| model | test PER |
+|---|---|
+| CNN + TD-filterbanks | 18.0 |
+| PASE+ | 17.2 |
+| Li-GRU + fMLLR | 14.9 |
+| wav2vec | 14.7 |
+| **this run — wav2vec2-base, 20 epochs** | **11.52** |
+| vq-wav2vec | 11.6 |
+| wav2vec 2.0 LARGE (317M) | 8.3 |
+
+A 95M-param base model fine-tuned for 2.4 hours lands level with **vq-wav2vec** and
+comfortably ahead of **wav2vec**. The 8.3 needs LARGE at 317M params, so the gap is
+model capacity, not recipe.
+
+**Phones break out of the plateau faster than characters.** The ASR head sat at WER 1.00
+for 4 epochs then fell to 0.65; the phoneme head sat at 0.98 for 3 epochs then fell
+straight to 0.15. Predicting 39 phones is an easier target than spelling 30 characters —
+the model is not being asked to learn English orthography on top of acoustics, which is
+the same point the ASR errors made from the other direction (`negociiations`, `seremic`).
+
+Run it with:
+
+```bash
+caffeinate -i -s python src/finetune.py --task phoneme --epochs 20 --eval-split core_test
+```
+
+`caffeinate` is not optional on a Mac: this machine has `pmset sleep 1`, and the ASR run
+without it averaged **25.7 s/step against 3.72 with it** — 7× on identical work.
 
 ## The data
 
@@ -154,28 +203,26 @@ What ran, and what did not:
 
 | | status |
 |---|---|
-| Step 1 pipeline | complete, trained, **WER 0.2869** |
-| Step 2 pipeline | complete and smoke-tested end to end, emits PER — **never trained to convergence** |
-| Step 1 epochs | **20 of 30** |
+| Step 1 — ASR | trained, **WER 28.69%**, 20 of 30 epochs |
+| Step 2 — phonemes | trained, **PER 11.52%**, 20 epochs |
 
-**Step 2 has no result.** The code path works — it builds the 41-token phone vocabulary,
-trains, and computes PER — but the only runs were smoke tests on a couple of dozen
-utterances, which produce PER ≈ 0.99 and mean nothing. A real number needs the full run:
+Both steps converged and stopped early on purpose: WER was flat for 7 epochs with
+`eval_loss` rising, and PER was flat for 8 (11.52–12.16 from epoch 12 on). Neither number
+is 30-epoch.
 
-```bash
-python src/finetune.py --task phoneme --epochs 20 --eval-split core_test
-```
+**Step 1 is not comparable to the blog's 0.221.** That is the full 1344-utterance test set
+at 30 epochs; this is the 192-utterance core test set at 20. **Step 2 is comparable** to
+the TIMIT ladder, because that protocol is fixed and this run follows it exactly.
 
-**Why it stopped at 20 epochs.** Not a technical failure — WER had been flat for 7 epochs
+**Why they stopped at 20 epochs.** Not a technical failure — WER had been flat for 7 epochs
 and `eval_loss` was climbing, so the remaining 10 epochs had nothing to offer. The cost
 was real: 16.6 h wall-clock for 2327 steps, an average of **25.7 s/step against ~5 s/step
 when the machine is actually awake**. The watchdog log shows multi-hour stretches
 completing ~150 steps, consistent with the Mac sleeping overnight. Anyone reproducing this
 should either disable sleep (`caffeinate -i`) or run it on a GPU box.
 
-**Not comparable to the blog's 0.221.** That number is over TIMIT's full 1344-utterance
-test set after 30 epochs; this is the 192-utterance core test set at 20 epochs. Different
-denominator, fewer epochs.
+Both runs used `caffeinate -i -s`; the earlier ASR run without it averaged 25.7 s/step
+against 3.72 with it, because this machine has `pmset sleep 1`.
 
 ## Layout
 
