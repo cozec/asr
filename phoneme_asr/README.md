@@ -149,16 +149,75 @@ operating points: Tiny Transducer quotes params after SVD compression, CUPE quot
 cross-lingual GER, BFA quotes a speed multiple over MFA, and none share a phone set or a
 device. That is the gap this folder could close, not the accuracy ladder itself.
 
-### We are already set up to enter the ladder
+### Our baseline on the ladder
 
-**Done.** [`wav2vec2_fine_tune/`](../wav2vec2_fine_tune/) implements this protocol exactly
-— 3696/192 splits, 61→39 folding verified to yield exactly 39 phones — and a 20-epoch
-`wav2vec2-base` fine-tune scored **11.52% PER**, level with vq-wav2vec and ahead of
-wav2vec. 2.4 hours on an M5.
+**Done — 11.52% PER.** A 20-epoch `wav2vec2-base` fine-tune, level with vq-wav2vec and
+ahead of wav2vec, in 2h24m on an M5 laptop.
 
-That beat the 12–20% I predicted before running it. The lesson is the one the survey is
-built on: the ladder is public, the protocol is fixed, and running the thing costs less
-than arguing about where it would land.
+![Two panels. Top: phone error rate on a log axis falling from 98% to 11.5% over 20 epochs, with dashed reference lines for the published ladder; the run crosses below wav2vec at 14.7 around epoch 6 and settles just under vq-wav2vec at 11.6. Bottom: train and eval CTC loss on a log axis, both dropping sharply before epoch 5, with a marker where warmup ends at step 1000.](plots/timit_phoneme_finetune.png)
+
+```bash
+python plot_finetune.py    # regenerates from ../wav2vec2_fine_tune/results/
+```
+
+### Setup
+
+| | |
+|---|---|
+| base model | `facebook/wav2vec2-base` — 94.4M params, self-supervised on LS-960, **no ASR head** |
+| trainable | 90.2M (95.6%) — conv feature encoder frozen by `freeze_feature_encoder()` |
+| head | fresh `nn.Linear(768, 41)` = **31,529 params**, random init `N(0, 0.02)` |
+| vocabulary | 39 folded phones + `[UNK]` + `[PAD]` |
+| train / eval | 3696 utts (SA1–SA2 excluded) / 192-utterance core test |
+| loss | CTC, `ctc_loss_reduction="mean"`, blank = `[PAD]` |
+| optimizer | Adam, lr 1e-4, weight decay 0.005, **1000 warmup steps** |
+| batch | 8 × 4 accumulation = **32 effective** |
+| epochs | 20 (116 steps/epoch, 2320 total) |
+| regularisation | `mask_time_prob` 0.05 (SpecAugment), gradient checkpointing |
+| precision | fp32 — `fp16` is unsupported on MPS |
+| hardware | Apple M5, 16 GB, MPS, with `aten::_ctc_loss` falling back to CPU |
+| wall clock | **2h24m**, 3.72 s/step |
+
+### Reading the curves
+
+**PER is flat at 98.18% for three epochs, then collapses.** The head is 31,529 randomly
+initialized parameters over a 41-token vocabulary, so until it learns the inventory the
+model emits nothing but blanks and every phone is a deletion. Epoch 4 breaks to 63%,
+epoch 5 lands at 15.08% — one epoch spanning nearly the entire useful range.
+
+**Both losses fall long before PER moves.** Eval loss drops 3.75 → 0.66 across epochs 1–5
+while PER is still near 98%. The model is learning to place probability mass correctly
+before it can produce a decodable sequence, which is why loss alone is a poor progress
+signal for CTC and why the metric has to be evaluated separately.
+
+**Train loss sits above eval loss throughout** — 0.47 vs 0.34 at the end. Not
+underfitting: `mask_time_prob=0.05` applies SpecAugment-style time masking during training
+only, so the training objective is genuinely harder than evaluation.
+
+**Warmup ends at step 1000 (epoch 8.6), well after convergence.** The schedule was
+inherited from the blog's 30-epoch ASR recipe. PER had already reached 12.4% by epoch 8,
+so the learning rate was still ramping while the model was essentially done — a shorter
+warmup would very likely reach the same place sooner.
+
+**Converged by epoch 12, best at 16.** The last 8 evaluations span 11.52–12.16, a 0.64
+spread, while eval loss drifts up from 0.337 to 0.399. That divergence is mild overfitting
+and the reason 20 epochs was enough; the remaining 10 of the blog's 30 had nothing to add.
+
+### Why phones converge faster than characters
+
+The same trunk trained for character ASR on the same audio sat at WER 1.00 for **four**
+epochs and only reached 65% at epoch 5, versus 15% here. Two reasons: 39 phones is a
+smaller target than 30 characters arranged into English spelling, and the phone labels
+come from TIMIT's hand-aligned `.PHN` annotations rather than orthography. The ASR run's
+errors made the same point from the other side — `negociiations`, `seremic`, `artefficial`
+— acoustically right, orthographically wrong. Phones skip that second problem entirely.
+
+### What this does not show
+
+The run has no int8 quantization, no ONNX export, and no latency measurement, so it
+establishes the **accuracy** corner of the benchmark this folder wants and nothing else.
+The 8.3 headline needs LARGE at 317M params, which is 3.3× this model — the gap is
+capacity, not recipe.
 
 ## Gaps worth building into
 
